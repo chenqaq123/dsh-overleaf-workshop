@@ -777,7 +777,7 @@ window.__ModuleLoader__.load({
               live.current = { text: result.text, baseText: result.text, mtimeMs: result.mtimeMs, dirty: false };
               setFile({ path, text: result.text, mtimeMs: result.mtimeMs });
               setDirty(false);
-              setNotice('已同步外部改动。');
+              setNotice('');
               return;
             }
             if (result.text === current.baseText) {
@@ -801,7 +801,7 @@ window.__ModuleLoader__.load({
             }
             setDirty(nextText !== result.text);
             if (nextText !== result.text) setEditRevision((value) => value + 1);
-            setNotice(merged.conflict ? '远端改动有冲突，已保留本地文本。' : '已合并远端改动。');
+            setNotice(merged.conflict ? '远端改动有冲突，已保留本地文本。' : '');
           } catch { /* the file may be mid-write; try again on the next tick */ }
         }, 1500);
         return () => clearInterval(timer);
@@ -840,9 +840,7 @@ window.__ModuleLoader__.load({
               mtimeMs: result.mtimeMs, dirty: true };
             setDirty(true);
           }
-          setNotice(result.merged
-            ? '已合并远端改动并保存，正在推送到 Overleaf。'
-            : '已保存，正在推送到 Overleaf。');
+          setNotice(result.conflict ? '远端改动有冲突，已保留本地文本。' : '');
           setError('');
           setPushWatch(undefined);
           // Push now instead of waiting for fs.watch's debounce, then report
@@ -851,20 +849,10 @@ window.__ModuleLoader__.load({
           try {
             const status = await api('live', { ...where(), action: 'flush' });
             const outcome = pushOutcome(status, path, startedAt);
-            const message = result.merged ? ({
-              pushed: '已合并远端改动并推送到 Overleaf。',
-              settled: '已合并远端改动并保存。',
-              local: '已合并远端改动并保存到本地；实时同步未连接。',
-              pending: '已合并远端改动并保存，推送仍在进行…',
-              error: outcome.message,
-            })[outcome.kind] : outcome.message;
-            if (outcome.kind === 'error') { setNotice(''); setError(message); }
-            else setNotice(message);
+            if (outcome.kind === 'error') { setNotice(''); setError(outcome.message); }
             if (outcome.kind === 'pending') setPushWatch({ path, startedAt });
-          } catch {
-            setNotice(result.merged
-              ? '已合并远端改动并保存到本地；实时同步不可用。'
-              : '已保存到本地；实时同步不可用。');
+          } catch (e) {
+            setError(`已保存到本地；推送不可用：${errorText(e)}`);
           }
           return true;
         } catch (e) { setError(errorText(e)); return false; }
@@ -893,13 +881,13 @@ window.__ModuleLoader__.load({
             const outcome = pushOutcome(status, pushWatch.path, pushWatch.startedAt);
             if (outcome.kind !== 'pending') {
               if (outcome.kind === 'error') { setNotice(''); setError(outcome.message); }
-              else setNotice(outcome.message);
               setPushWatch(undefined);
               return;
             }
           }
           if (Date.now() >= deadline) {
-            setNotice('已保存到本地；推送尚未完成，恢复同步后会重试。');
+            // The local save is safe; a slow push should not keep a banner on
+            // screen. A concrete rejection above still reports.
             setPushWatch(undefined);
             return;
           }
@@ -1116,6 +1104,7 @@ window.__ModuleLoader__.load({
       const [error, setError] = useState('');
       const [notice, setNotice] = useState('');
       const [compile, setCompile] = useState(undefined);
+      const [pushWatch, setPushWatch] = useState(undefined);
       const editorRef = useRef(undefined);
       const bufferRef = useRef({ text: '', baseText: '', mtimeMs: 0 });
 
@@ -1132,6 +1121,7 @@ window.__ModuleLoader__.load({
           setFile({ path, text: result.text, mtimeMs: result.mtimeMs });
           setDirty(false);
           setError('');
+          setPushWatch(undefined);
           if (line !== undefined && line !== null) {
             requestAnimationFrame(() => editorRef.current?.revealLine(line));
           }
@@ -1167,28 +1157,48 @@ window.__ModuleLoader__.load({
           bufferRef.current = { text: result.text, baseText: result.text, mtimeMs: result.mtimeMs };
           setFile({ ...file, text: result.text, mtimeMs: result.mtimeMs });
           setDirty(false);
-          setNotice(result.merged ? '已合并远端改动并保存，正在推送到 Overleaf。'
-            : '已保存，正在推送到 Overleaf。');
+          setNotice(result.conflict ? '远端改动有冲突，已保留本地文本。' : '');
           setError('');
+          setPushWatch(undefined);
           try {
             const status = await api('live', { local_path: workspace.localDir, action: 'flush' });
             const outcome = pushOutcome(status, file.path, startedAt);
-            const message = result.merged ? ({
-              pushed: '已合并远端改动并推送到 Overleaf。',
-              settled: '已合并远端改动并保存。',
-              local: '已合并远端改动并保存到本地；实时同步未连接。',
-              pending: '已合并远端改动并保存，推送仍在进行…',
-              error: outcome.message,
-            })[outcome.kind] : outcome.message;
-            if (outcome.kind === 'error') { setNotice(''); setError(message); }
-            else setNotice(message);
-          } catch {
-            setNotice(result.merged ? '已合并远端改动并保存到本地；实时同步不可用。'
-              : '已保存到本地；实时同步不可用。');
+            if (outcome.kind === 'error') { setNotice(''); setError(outcome.message); }
+            if (outcome.kind === 'pending') setPushWatch({ path: file.path, startedAt });
+          } catch (e) {
+            setError(`已保存到本地；推送不可用：${errorText(e)}`);
           }
           return true;
         } catch (e) { setError(errorText(e)); return false; } finally { setBusy(''); }
       }, [api, workspace.localDir, file, dirty]);
+
+      // A flush can return while the echo is still in flight; keep asking until
+      // the push has a final answer. Routine success stays silent.
+      useEffect(() => {
+        if (pushWatch === undefined) return undefined;
+        let cancelled = false;
+        let timer;
+        const deadline = pushWatch.startedAt + 30000;
+        const poll = async () => {
+          let current;
+          try {
+            current = await api('live', { local_path: workspace.localDir, action: 'status' });
+          } catch { /* try again */ }
+          if (cancelled) return;
+          if (current !== undefined) {
+            const outcome = pushOutcome(current, pushWatch.path, pushWatch.startedAt);
+            if (outcome.kind !== 'pending') {
+              if (outcome.kind === 'error') { setNotice(''); setError(outcome.message); }
+              setPushWatch(undefined);
+              return;
+            }
+          }
+          if (Date.now() >= deadline) { setPushWatch(undefined); return; }
+          timer = setTimeout(poll, 500);
+        };
+        timer = setTimeout(poll, 400);
+        return () => { cancelled = true; clearTimeout(timer); };
+      }, [pushWatch, api, workspace.localDir]);
 
       const compileNow = useCallback(async () => {
         if (dirty && !(await save())) return;
@@ -1245,6 +1255,7 @@ window.__ModuleLoader__.load({
           setFile((previous) => (previous === undefined ? previous : { ...previous, text }));
           setDirty(true);
           setNotice('');
+          setPushWatch(undefined);
         },
       });
 
