@@ -1875,11 +1875,18 @@ window.__ModuleLoader__.load({
           let focusTimer;
           const onClick = (event) => {
             const target = event.target instanceof Element ? event.target : undefined;
-            const row = target?.closest('[role="button"][title]');
+            // The built-in tree exposes `data-files-path` on its rows; the
+            // alternate explorer uses a button with an absolute `title`.
+            const row = target?.closest('[data-files-path], [role="button"][title]');
             if (row === null || row === undefined) return;
-            const name = (row.getAttribute('title') ?? '').split('/').pop() ?? '';
+            const path = row.getAttribute('data-files-path') ?? row.getAttribute('title') ?? '';
+            const entry = row.getAttribute('data-files-entry');
+            const name = path.split('/').pop() ?? '';
             // Folders toggle in place; only actual files leave the column.
-            if (name.length === 0 || !name.includes('.') || String(row.className).includes('explorerDir')) return;
+            if (entry === 'folder') return;
+            if (entry === undefined
+              && (name.length === 0 || !name.includes('.') || String(row.className).includes('explorerDir'))) return;
+            if (entry === 'file' && name.length === 0) return;
             const pane = row.closest('[data-dockkit-pane]');
             if (pane === null) return;
             const service = sidebarService();
@@ -1888,22 +1895,65 @@ window.__ModuleLoader__.load({
             const tabs = service.tabsIn?.(sessionId) ?? [];
             const filesTab = tabs.find((tab) => tab.kind === 'files');
             if (filesTab === undefined || paneOfTab(filesTab.id) !== pane) return;
+            const beforeIds = new Set(tabs.filter((tab) => tab.kind !== 'files' && tab.kind !== 'guide')
+              .map((tab) => tab.id));
             const editorTab = tabs.find((tab) => tab.kind !== 'files' && tab.kind !== 'guide'
               && paneOfTab(tab.id) !== undefined && paneOfTab(tab.id) !== pane);
-            if (editorTab === undefined) return;
-            const editorPaneId = paneOfTab(editorTab.id)?.dataset.dockkitPane;
-            try { service.focus?.(editorTab.id); } catch { /* the tree's own open still works */ }
-            // The click's own focus can land after the tree's handler; put the
-            // caret back on whichever editor tab that handler selected.
+            const editorPaneId = editorTab === undefined ? undefined : paneOfTab(editorTab.id)?.dataset.dockkitPane;
+            // Focus first, so a tree whose rows ask the controller to open the
+            // resource lands in the editor pane rather than the tree pane.
+            if (editorTab !== undefined) {
+              try { service.focus?.(editorTab.id); } catch { /* the tree's own open still works */ }
+            }
+            // Some trees (and an empty editor pane) ignore that; after the
+            // tree's handler has run, move whatever landed in the tree pane.
             clearTimeout(focusTimer);
-            focusTimer = setTimeout(() => {
-              const editorPane = visibleDockPanes()
+            focusTimer = setTimeout(() => { void (async () => {
+              const current = sidebarService();
+              if (current === undefined || current.mounted?.getSnapshot?.() !== sessionId) return;
+              const filesPane = paneOfTab(filesTab.id);
+              if (filesPane === undefined) return;
+              const nowTabs = current.tabsIn?.(sessionId) ?? [];
+              const landed = nowTabs.filter((tab) => tab.kind !== 'files' && tab.kind !== 'guide'
+                && paneOfTab(tab.id) === filesPane && !beforeIds.has(tab.id));
+              if (landed.length > 0) {
+                const panes = visibleDockPanes();
+                let editorPane = panes.find((candidate) => candidate !== filesPane);
+                if (editorPane === undefined) {
+                  const actions = findPaneActions(sessionId);
+                  if (actions?.splitPane !== undefined && filesPane.dataset.dockkitPane !== undefined) {
+                    try { actions.splitPane(sessionId, filesPane.dataset.dockkitPane); } catch { /* no room */ }
+                    await wait(350);
+                    editorPane = visibleDockPanes().find((candidate) => candidate !== paneOfTab(filesTab.id));
+                  }
+                }
+                if (editorPane !== undefined) {
+                  const actions = findPaneActions(sessionId);
+                  for (const tab of landed) {
+                    try { actions?.placeTab?.(sessionId, tab.id, editorPane.dataset.dockkitPane); } catch { /* leave it */ }
+                  }
+                  await wait(120);
+                  const split = paneOfTab(filesTab.id)?.closest('[data-dockkit-split]');
+                  if (split !== null && split !== undefined && actions?.resizeSplit !== undefined) {
+                    try {
+                      actions.resizeSplit(sessionId, split.dataset.dockkitSplit,
+                        [FILES_PANE_RATIO, 1 - FILES_PANE_RATIO]);
+                    } catch { /* keep the default split */ }
+                  }
+                  try { current.focus?.(landed[landed.length - 1].id); } catch { /* keep */ }
+                  pruneEditorPanes(sessionId, current);
+                }
+                return;
+              }
+              // No move was needed: keep the caret on the editor tab the tree
+              // selected, instead of leaving focus in the directory pane.
+              const editorPane = editorPaneId === undefined ? undefined : visibleDockPanes()
                 .find((candidate) => candidate.dataset.dockkitPane === editorPaneId);
               const selected = editorPane?.querySelector('[data-dockkit-tab][aria-selected="true"]');
               const tabId = selected?.getAttribute('data-dockkit-tab');
               if (tabId === null || tabId === undefined) return;
-              try { service.focus?.(tabId); } catch { /* keep the selection */ }
-            }, 80);
+              try { current.focus?.(tabId); } catch { /* keep the selection */ }
+            })(); }, 120);
           };
           document.addEventListener('click', onClick, true);
           return () => {

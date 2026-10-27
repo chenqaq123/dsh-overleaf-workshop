@@ -1,6 +1,6 @@
 {
   "name": "dsh-overleaf",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Open Overleaf projects as local DSH workspaces: pull, push, compile with error reporting, and PDF preview.",
   "type": "module",
   "main": "index.js",
