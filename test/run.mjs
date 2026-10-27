@@ -384,6 +384,9 @@ await test('a local file edit is pushed as OT within the debounce window', async
   await sleep(1400);
   assert.ok(mock.state.docs.get('doc1').text.startsWith('LOCAL EDIT'), mock.state.docs.get('doc1').text);
   assert.equal(readFileSync(join(liveDir, 'main.tex'), 'utf8'), mock.state.docs.get('doc1').text);
+  // Overleaf rejects an update carrying a hash it does not recognise; the Git
+  // blob hash used for fileRefs is not the document hash, so send none.
+  assert.equal(mock.state.lastPushed.update.hash, undefined);
 });
 
 await test('a remote edit lands in the local file', async () => {

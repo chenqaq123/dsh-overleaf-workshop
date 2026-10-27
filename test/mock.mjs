@@ -99,7 +99,7 @@ export function createMock() {
       // The sender gets an op-less acknowledgement that still bumps the version.
       if (!state.dropEcho) enqueue(sid, `5:::${JSON.stringify({ name: 'otUpdateApplied',
         args: [{ doc: update.doc, v: update.v, meta: { source: sid, ts: Date.now() } }] })}`);
-      state.lastPushed = { doc: update.doc, text: doc.text, version: doc.version };
+      state.lastPushed = { doc: update.doc, text: doc.text, version: doc.version, update };
       return;
     }
     ack([]);

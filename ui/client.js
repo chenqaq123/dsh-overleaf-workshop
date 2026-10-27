@@ -252,6 +252,31 @@ window.__ModuleLoader__.load({
 
     const basenameOf = (path) => String(path).split('/').pop() ?? String(path);
 
+    /**
+     * Turn a live status into what the editor should say about one save.
+     *
+     * The flush RPC returns after two seconds; a slow echo or a reconnect can
+     * leave it pending, so callers poll this until the kind is no longer
+     * `pending` instead of showing "pushing" forever.
+     */
+    function pushOutcome(status, path, savedAt) {
+      const pushedAt = status?.lastPushAt === undefined ? 0 : Date.parse(status.lastPushAt);
+      const failedAt = status?.pushErrorAt === undefined ? 0 : Date.parse(status.pushErrorAt);
+      if (status?.pushError && failedAt >= savedAt) {
+        return { kind: 'error', message: `已保存到本地，但推送到 Overleaf 失败：${status.pushError}` };
+      }
+      if (status?.lastPushPath === path && pushedAt >= savedAt) {
+        return { kind: 'pushed', message: '已保存并推送到 Overleaf。' };
+      }
+      if (status?.phase !== 'connected' || status?.paused) {
+        return { kind: 'local', message: '已保存到本地；实时同步未连接。' };
+      }
+      if ((status?.pending ?? 0) === 0 && (status?.inFlight ?? 0) === 0 && status?.flushing !== true) {
+        return { kind: 'settled', message: '已保存到本地（内容与 Overleaf 一致）。' };
+      }
+      return { kind: 'pending', message: '已保存到本地，推送仍在进行…' };
+    }
+
     /** The conversation keeps the width it has in the reference three-column layout. */
     const CHAT_WIDTH = 400;
     /** The directory pane takes a quarter of the editor area; the source pane takes the rest. */
@@ -663,6 +688,8 @@ window.__ModuleLoader__.load({
       const [compile, setCompile] = useState(undefined);
       const [hasPdf, setHasPdf] = useState(false);
       const [syncEnded, setSyncEnded] = useState(false);
+      /** {path, startedAt}: a save whose push is still settling, polled below. */
+      const [pushWatch, setPushWatch] = useState(undefined);
       const editorRef = useRef(undefined);
       // Where the last navigation asked to land; read when the initial load
       // resolves, so re-clicking an open tab never re-reads (and never drops an
@@ -676,6 +703,7 @@ window.__ModuleLoader__.load({
         live.current = { text: result.text, mtimeMs: result.mtimeMs, dirty: false };
         setFile({ path, text: result.text, mtimeMs: result.mtimeMs });
         setDirty(false);
+        setPushWatch(undefined);
         const line = lineRef.current;
         if (typeof line === 'number') requestAnimationFrame(() => editorRef.current?.revealLine(line));
       }, [path]);
@@ -758,25 +786,16 @@ window.__ModuleLoader__.load({
           setDirty(false);
           setNotice('已保存，正在推送到 Overleaf。');
           setError('');
+          setPushWatch(undefined);
           // Push now instead of waiting for fs.watch's debounce, then report
           // what actually happened. The old fixed notice stayed on screen even
           // after the host had crashed, so it read as a permanent "pushing".
           try {
             const status = await api('live', { ...where(), action: 'flush' });
-            const pushedAt = status?.lastPushAt === undefined ? 0 : Date.parse(status.lastPushAt);
-            const failedAt = status?.pushErrorAt === undefined ? 0 : Date.parse(status.pushErrorAt);
-            if (status?.pushError && failedAt >= startedAt) {
-              setNotice('');
-              setError(`已保存到本地，但推送到 Overleaf 失败：${status.pushError}`);
-            } else if (status?.lastPushPath === path && pushedAt >= startedAt) {
-              setNotice('已保存并推送到 Overleaf。');
-            } else if (status?.phase !== 'connected' || status?.paused) {
-              setNotice('已保存到本地；实时同步未连接。');
-            } else if ((status?.pending ?? 0) === 0 && (status?.inFlight ?? 0) === 0) {
-              setNotice('已保存到本地（内容与 Overleaf 一致）。');
-            } else {
-              setNotice('已保存到本地，推送仍在进行…');
-            }
+            const outcome = pushOutcome(status, path, startedAt);
+            if (outcome.kind === 'error') { setNotice(''); setError(outcome.message); }
+            else setNotice(outcome.message);
+            if (outcome.kind === 'pending') setPushWatch({ path, startedAt });
           } catch {
             setNotice('已保存到本地；实时同步不可用。');
           }
@@ -784,6 +803,40 @@ window.__ModuleLoader__.load({
         } catch (e) { setError(errorText(e)); return false; }
         finally { setBusy(''); }
       }, [api, sessionId, path, busy]);
+
+      // A flush can return while the echo or a reconnect is still in flight.
+      // Keep asking until the save has a final answer, so "推送仍在进行…" is
+      // never the last thing the user sees.
+      useEffect(() => {
+        if (pushWatch === undefined || sessionId === undefined) return undefined;
+        let cancelled = false;
+        let timer;
+        const deadline = pushWatch.startedAt + 30000;
+        const poll = async () => {
+          let status;
+          try {
+            status = await api('live', { ...where(), action: 'status' });
+          } catch { /* keep the last message and try again */ }
+          if (cancelled) return;
+          if (status !== undefined) {
+            const outcome = pushOutcome(status, pushWatch.path, pushWatch.startedAt);
+            if (outcome.kind !== 'pending') {
+              if (outcome.kind === 'error') { setNotice(''); setError(outcome.message); }
+              else setNotice(outcome.message);
+              setPushWatch(undefined);
+              return;
+            }
+          }
+          if (Date.now() >= deadline) {
+            setNotice('已保存到本地；推送尚未完成，恢复同步后会重试。');
+            setPushWatch(undefined);
+            return;
+          }
+          timer = setTimeout(poll, 500);
+        };
+        timer = setTimeout(poll, 400);
+        return () => { cancelled = true; clearTimeout(timer); };
+      }, [pushWatch, api, sessionId, path, localPath]);
 
       const compileNow = async () => {
         if (sessionId === undefined) return;
@@ -889,6 +942,7 @@ window.__ModuleLoader__.load({
             setFile((previous) => (previous === undefined ? previous : { ...previous, text }));
             setDirty(true);
             setNotice('');
+            setPushWatch(undefined);
           },
         }),
         errors.length > 0 ? h('div', { className: 'dsh-ol-src-errors' }, errors.map((item, index) => h('button', {
@@ -1033,20 +1087,9 @@ window.__ModuleLoader__.load({
           setError('');
           try {
             const status = await api('live', { local_path: workspace.localDir, action: 'flush' });
-            const pushedAt = status?.lastPushAt === undefined ? 0 : Date.parse(status.lastPushAt);
-            const failedAt = status?.pushErrorAt === undefined ? 0 : Date.parse(status.pushErrorAt);
-            if (status?.pushError && failedAt >= startedAt) {
-              setNotice('');
-              setError(`已保存到本地，但推送到 Overleaf 失败：${status.pushError}`);
-            } else if (status?.lastPushPath === file.path && pushedAt >= startedAt) {
-              setNotice('已保存并推送到 Overleaf。');
-            } else if (status?.phase !== 'connected' || status?.paused) {
-              setNotice('已保存到本地；实时同步未连接。');
-            } else if ((status?.pending ?? 0) === 0 && (status?.inFlight ?? 0) === 0) {
-              setNotice('已保存到本地（内容与 Overleaf 一致）。');
-            } else {
-              setNotice('已保存到本地，推送仍在进行…');
-            }
+            const outcome = pushOutcome(status, file.path, startedAt);
+            if (outcome.kind === 'error') { setNotice(''); setError(outcome.message); }
+            else setNotice(outcome.message);
           } catch {
             setNotice('已保存到本地；实时同步不可用。');
           }
