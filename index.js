@@ -1,5 +1,5 @@
 /**
- * dsh-overleaf — open Overleaf projects as local DSH workspaces.
+ * dsh-overleaf-workshop — open Overleaf projects as local DSH workspaces.
  *
  * An Overleaf workspace is a plain local directory pulled from the project zip,
  * so the harness's normal `read`/`write`/`edit`/`glob`/`grep`/`bash` tools, the
@@ -12,7 +12,7 @@
  * The plugin deliberately does not touch `ctx.fs` or `ctx.shell`, so it can be
  * installed alongside the SSH remote plugin.
  *
- * @module dsh-overleaf
+ * @module dsh-overleaf-workshop
  */
 
 import { homedir } from 'node:os';

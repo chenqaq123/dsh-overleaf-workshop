@@ -57,18 +57,36 @@ Cookie 过期后所有请求会得到明确报错，重新粘贴即可。overlea
 
 ## 安装
 
-### 从 GitHub 安装（打包方式，推荐）
+### 从 GitHub Release 安装（市场 / 一键安装，推荐）
+
+每个版本都会在 GitHub Release 附带打包好的 tarball，市场的一键安装也使用它：
+
+```sh
+curl -L -o /tmp/dsh-overleaf-workshop-0.3.0.tgz \
+  https://github.com/chenqaq123/dsh-overleaf-workshop/releases/download/v0.3.0/dsh-overleaf-workshop-0.3.0.tgz
+dsh plugin --profile desktop add file:/tmp/dsh-overleaf-workshop-0.3.0.tgz
+```
+
+macOS 桌面版如果没有把 `dsh` 加进 PATH，直接用应用内自带的 CLI：
+
+```sh
+"/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" plugin --profile desktop add file:/tmp/dsh-overleaf-workshop-0.3.0.tgz
+```
+
+### 从源码安装（打包方式）
 
 先启动一次 Harness，使配置目录存在，然后**完全退出 Harness**：
 
 ```sh
 git clone https://github.com/chenqaq123/dsh-overleaf-workshop.git
-cd dsh-overleaf
+cd dsh-overleaf-workshop
 npm install --omit=dev --ignore-scripts
 node scripts/profile.mjs install desktop
 ```
 
-安装器用 `npm pack` 在 `~/.dsh/plugin-packages/` 生成 tarball，再调用 DSH 原生的 `dsh plugin --profile desktop add file:<tarball>` 安装。插件文件会进入 DSH 自己的 profile，源码目录安装完成后可以移动或删除。重新打开 Harness 后，在「插件 → 已安装」中管理 `dsh-overleaf`。
+安装器用 `npm pack` 在 `~/.dsh/plugin-packages/` 生成 tarball，再调用 DSH 原生的 `dsh plugin --profile desktop add file:<tarball>` 安装。插件文件会进入 DSH 自己的 profile，源码目录安装完成后可以移动或删除。重新打开 Harness 后，在「插件 → 已安装」中管理 `dsh-overleaf-workshop`。
+
+> 包名已从 `dsh-overleaf` 改为 `dsh-overleaf-workshop`：npm 上的 `dsh-overleaf` 属于另一个 Overleaf 插件，继续使用会让市场按包名装错。旧版安装器升级时会只移除由本仓库安装的旧包，不会动第三方同名插件。
 
 ### 开发时链接安装
 

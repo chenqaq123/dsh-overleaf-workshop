@@ -16,7 +16,8 @@ import { delimiter, join, resolve, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
-const packageName = 'dsh-overleaf';
+const packageName = 'dsh-overleaf-workshop';
+const legacyPackageNames = ['dsh-overleaf'];
 const source = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 /** Prefer the Desktop carrier: the ordinary CLI cannot manage the reserved desktop profile. */
@@ -73,9 +74,28 @@ function packPlugin(base) {
   return tarball;
 }
 
+/** Whether a recorded legacy dependency was installed from this checkout. */
+function isOwnLegacySpec(base, spec) {
+  if (typeof spec !== 'string') return false;
+  if (spec.startsWith('link:')) {
+    try {
+      return resolve(spec.slice('link:'.length)) === source;
+    } catch {
+      return false;
+    }
+  }
+  if (spec.startsWith('file:')) {
+    const tarball = resolve(spec.slice('file:'.length));
+    const name = basename(tarball);
+    return dirname(tarball) === join(base, 'plugin-packages')
+      && name.startsWith('dsh-overleaf-') && name.endsWith('.tgz');
+  }
+  return false;
+}
+
 function updateProfile(action, profile = 'desktop', { link = false } = {}) {
   if (!['install', 'uninstall'].includes(action)) {
-    throw new Error('Usage: dsh-overleaf <install|uninstall> [profile] [--link]');
+    throw new Error('Usage: dsh-overleaf-workshop <install|uninstall> [profile] [--link]');
   }
   if (!/^[\w.-]+$/u.test(profile) || ['.', '..', 'node_modules'].includes(profile)) throw new Error('Invalid profile name');
   const base = resolve(process.env.DSH_HOME ?? join(homedir(), '.dsh'));
@@ -91,6 +111,18 @@ function updateProfile(action, profile = 'desktop', { link = false } = {}) {
   }
   const cli = findDshCli();
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  // The package was renamed from `dsh-overleaf` (already taken on npm). Remove
+  // an older copy installed from this checkout so the profile does not mount
+  // both plugins. A third-party `dsh-overleaf` dependency is left alone.
+  if (action === 'install') {
+    for (const legacy of legacyPackageNames) {
+      if (!isOwnLegacySpec(base, manifest.dependencies?.[legacy])) continue;
+      const removed = run(cli, ['plugin', '--profile', profile, 'remove', legacy]);
+      if (removed.error || removed.status !== 0) {
+        throw new Error(`DSH native remove failed for ${legacy}${removed.error ? `: ${removed.error.message}` : ` (exit ${removed.status})`}`);
+      }
+    }
+  }
   const recorded = manifest.dependencies?.[packageName];
   const mustReplace = action === 'install' && recorded !== undefined
     // A packaged tarball can change without a version bump; pnpm would otherwise

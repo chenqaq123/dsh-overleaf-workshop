@@ -287,10 +287,10 @@ export async function registerOverleafUi(ctx, host, runtime) {
   };
 
   const codec = (method, kind, schema) => ({ mode: 'strict',
-    typeSymbol: `dsh-overleaf-ui#${method}:${kind}`, create: () => schema });
-  ctx.typert.register({ package: 'dsh-overleaf-ui', face: 'host', schemas: [],
+    typeSymbol: `dsh-overleaf-workshop-ui#${method}:${kind}`, create: () => schema });
+  ctx.typert.register({ package: 'dsh-overleaf-workshop-ui', face: 'host', schemas: [],
     invocations: Object.entries(definitions).map(([method, def]) => ({
-      id: `dsh-overleaf-ui#overleafUi/${method}`, service: 'overleafUi', namespace: 'overleafUi', method,
+      id: `dsh-overleaf-workshop-ui#overleafUi/${method}`, service: 'overleafUi', namespace: 'overleafUi', method,
       invocation: { kind: 'direct' }, parameters: def.request
         ? [{ name: 'request', wire: 'request', source: 'json', codec: codec(method, 'request', def.request) }] : [],
       ...(def.cancel ? { cancellation: { parameter: 'signal' } } : {}),

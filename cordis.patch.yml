@@ -1,8 +1,9 @@
-# Install dsh-overleaf as a profile layer. Unlike dsh-ssh-remote this bundle
-# patches no harness backend: an Overleaf workspace is a plain local directory,
-# so `ctx.fs` / `ctx.shell` stay untouched and the SSH plugin keeps working.
+# Install dsh-overleaf-workshop as a profile layer. Unlike dsh-ssh-remote this
+# bundle patches no harness backend: an Overleaf workspace is a plain local
+# directory, so `ctx.fs` / `ctx.shell` stay untouched and the SSH plugin keeps
+# working.
 - insert:
     - id: overleaf
-      name: 'dsh-overleaf'
+      name: 'dsh-overleaf-workshop'
       config:
         defaultServer: https://www.overleaf.com

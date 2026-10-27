@@ -1,7 +1,7 @@
 {
-  "name": "dsh-overleaf",
-  "version": "0.2.1",
-  "description": "Open Overleaf projects as local DSH workspaces: pull, push, compile with error reporting, and PDF preview.",
+  "name": "dsh-overleaf-workshop",
+  "version": "0.3.0",
+  "description": "Overleaf Workshop for DeepSeek Harness: three-column workspace, live sync, server compile and PDF preview.",
   "type": "module",
   "main": "index.js",
   "scripts": {
@@ -55,10 +55,11 @@
     "deepseek",
     "harness",
     "overleaf",
+    "overleaf-workshop",
     "latex"
   ],
   "bin": {
-    "dsh-overleaf": "scripts/profile.mjs"
+    "dsh-overleaf-workshop": "scripts/profile.mjs"
   },
   "dependencies": {
     "diff-match-patch": "^1.0.5",

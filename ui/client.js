@@ -1,6 +1,6 @@
 /* Native Harness client bundle. React and services come from its module loader. */
 window.__ModuleLoader__.load({
-  id: 'dsh-overleaf',
+  id: 'dsh-overleaf-workshop',
   factory(require) {
     const React = require('react');
     const h = React.createElement;
