@@ -15,7 +15,7 @@ import { OverleafClient, blobHash, normalizeCookieInput } from '../lib/api.js';
 import { parseLog } from '../lib/compile.js';
 import { RealtimeSocket } from '../lib/socket.js';
 import { DocumentModel, decodeJoinLines, parseJoinAck, ReceiveResult } from '../lib/documents.js';
-import { applyOps, mergeTexts, textToOps } from '../lib/ot.js';
+import { applyOps, mergeBeforeWrite, mergeTexts, textToOps } from '../lib/ot.js';
 import { OverleafLive, connectedCollaborators } from '../lib/live.js';
 import { LiveManager } from '../lib/live-manager.js';
 import { createWorkspaceFile, createWorkspaceFolder } from '../lib/workspace-files.js';
@@ -227,6 +227,31 @@ await test('planWrite asks for a re-join when the merge base was lost', () => {
   assert.equal(plan.send, false);
   assert.equal(plan.text, 'local');
   assert.equal(model.remoteText, 'remote', 'a missing base must not be treated as the remote text');
+});
+
+await test('an unsaved buffer merges a collaborator edit instead of failing on save', () => {
+  // base is what the editor loaded; disk already carries the collaborator's
+  // edit; ours is the unsaved buffer. The host applies base -> disk onto ours.
+  const base = 'line1\nline2\nline3\n';
+  const ours = 'line1 local\nline2\nline3\n';
+  const disk = 'line1\nline2\nline3 remote\n';
+  const merged = mergeTexts(base, ours, disk);
+  assert.equal(merged.conflict, false);
+  assert.equal(merged.text, 'line1 local\nline2\nline3 remote\n');
+});
+
+await test('mergeBeforeWrite combines a stale buffer with disk changes', () => {
+  const base = 'line1\nline2\nline3\n';
+  const buffer = 'line1 local\nline2\nline3\n';
+  const disk = 'line1\nline2\nline3 remote\n';
+  const combined = mergeBeforeWrite(base, buffer, disk);
+  assert.equal(combined.merged, true);
+  assert.equal(combined.conflict, false);
+  assert.equal(combined.text, 'line1 local\nline2\nline3 remote\n');
+  // Nothing changed on disk: a plain save must not need a merge.
+  const plain = mergeBeforeWrite(base, buffer, base);
+  assert.deepEqual(plain, { text: buffer, merged: false, conflict: false });
+  assert.equal(mergeBeforeWrite(undefined, buffer, disk).merged, false);
 });
 
 await test('decodeJoinLines reverses the latin1 packing', () => {

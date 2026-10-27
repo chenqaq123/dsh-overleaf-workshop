@@ -9,6 +9,7 @@ import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { CookieExpiredError, OverleafClient, normalizeBaseUrl } from '../lib/api.js';
 import { guessMainFile, toRpcCompileResult } from '../lib/compile.js';
+import { mergeBeforeWrite, mergeTexts } from '../lib/ot.js';
 import { isIgnoredPath, isOverleafProject, normalizeLocal, readProjectState } from '../lib/store.js';
 import { createWorkspaceFile, createWorkspaceFolder, resolveWorkspacePath } from '../lib/workspace-files.js';
 
@@ -219,19 +220,30 @@ export async function registerOverleafUi(ctx, host, runtime) {
       return { text: buffer.toString('utf8'), mtimeMs: info.mtimeMs };
     }
 
-    /** Save the editor buffer; refuses when the file changed underneath. */
+    /**
+     * Save the editor buffer.
+     *
+     * A collaborator's change lands on disk while this buffer may still hold
+     * unsaved edits, so an mtime mismatch is expected rather than an error.
+     * When the caller supplies the text it started from (`base_text`), merge
+     * base -> disk into the buffer, like the reference Overleaf Workshop does,
+     * and write the result. This keeps both sides' edits and never forces the
+     * user to reopen the file.
+     */
     writeFile(request) {
       const localDir = localDirOf(request);
       const file = safePath(localDir, request.path);
-      if (existsSync(file)) {
-        const info = statSync(file);
-        if (request.mtime_ms !== undefined && Math.abs(info.mtimeMs - request.mtime_ms) > 1) {
-          throw new Error('文件已被其他程序修改，请重新打开后再保存。');
-        }
-      }
+      const disk = existsSync(file) ? readFileSync(file, 'utf8') : undefined;
+      const combined = mergeBeforeWrite(request.base_text, request.text, disk);
       mkdirSync(dirname(file), { recursive: true });
-      writeFileSync(file, request.text, { mode: 0o644 });
-      return { mtimeMs: statSync(file).mtimeMs };
+      writeFileSync(file, combined.text, { mode: 0o644 });
+      return { mtimeMs: statSync(file).mtimeMs, text: combined.text,
+        merged: combined.merged, conflict: combined.conflict };
+    }
+
+    /** Three-way merge for an editor buffer; used while a remote edit lands. */
+    merge(request) {
+      return mergeTexts(request.base_text, request.ours, request.theirs);
     }
 
     /** Compile the document the caller is looking at, or the guessed main file. */
@@ -307,8 +319,12 @@ export async function registerOverleafUi(ctx, host, runtime) {
     readFile: { request: target.extend({ path: z.string().min(1).max(4096) }).strict(),
       result: z.object({ text: z.string(), mtimeMs: z.number() }) },
     writeFile: { request: target.extend({ path: z.string().min(1).max(4096),
-      text: z.string(), mtime_ms: z.number().optional() }).strict(),
-      result: z.object({ mtimeMs: z.number() }) },
+      text: z.string(), base_text: z.string().optional(), mtime_ms: z.number().optional() }).strict(),
+      result: z.object({ mtimeMs: z.number(), text: z.string(), merged: z.boolean(),
+        conflict: z.boolean() }) },
+    merge: { request: z.object({ base_text: z.string(), ours: z.string(),
+      theirs: z.string() }).strict(),
+      result: z.object({ text: z.string(), conflict: z.boolean() }) },
   };
 
   const codec = (method, kind, schema) => ({ mode: 'strict',

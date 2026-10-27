@@ -697,10 +697,12 @@ window.__ModuleLoader__.load({
       const lineRef = useRef(undefined);
       // The latest buffer as the polling timer and the save path see it, without
       // recreating either on every keystroke.
-      const live = useRef({ text: '', mtimeMs: 0, dirty: false });
+      const live = useRef({ text: '', baseText: '', mtimeMs: 0, dirty: false });
+      /** Defer remote merges for a moment after a keystroke, so typing is not disturbed. */
+      const lastEditAt = useRef(0);
 
       const adopt = useCallback((result) => {
-        live.current = { text: result.text, mtimeMs: result.mtimeMs, dirty: false };
+        live.current = { text: result.text, baseText: result.text, mtimeMs: result.mtimeMs, dirty: false };
         setFile({ path, text: result.text, mtimeMs: result.mtimeMs });
         setDirty(false);
         setPushWatch(undefined);
@@ -752,21 +754,51 @@ window.__ModuleLoader__.load({
         return () => { cancelled = true; };
       }, [api, sessionId, path, tab.visible, localPath]);
 
-      // Collaborators and the agent write the file on disk; adopt those changes
-      // while the user has no unsaved edit of their own.
+      // Collaborators and the agent write the file on disk. Adopt their change
+      // when this buffer is clean; when the user has unsaved edits, merge the
+      // disk change into the buffer instead of ignoring it until save (the old
+      // code skipped both dirty and focused buffers, so remote edits never
+      // appeared while the user was looking at the file).
       useEffect(() => {
         if (sessionId === undefined || path === undefined || tab.visible === false) return undefined;
         const timer = setInterval(async () => {
-          if (live.current.dirty) return;
-          if (editorRef.current?.hasFocus?.() === true) return;
           try {
             const result = await api('readFile', { ...where(), path });
-            if (result.text === live.current.text) return;
-            live.current = { text: result.text, mtimeMs: result.mtimeMs, dirty: false };
-            setFile({ path, text: result.text, mtimeMs: result.mtimeMs });
-            setNotice('已同步外部改动。');
+            const current = live.current;
+            if (result.text === current.text) {
+              live.current = { ...current, baseText: result.text, mtimeMs: result.mtimeMs };
+              return;
+            }
+            if (!current.dirty) {
+              live.current = { text: result.text, baseText: result.text, mtimeMs: result.mtimeMs, dirty: false };
+              setFile({ path, text: result.text, mtimeMs: result.mtimeMs });
+              setDirty(false);
+              setNotice('已同步外部改动。');
+              return;
+            }
+            if (result.text === current.baseText) {
+              // Only the unsaved buffer differs; there is no new remote change.
+              live.current = { ...current, mtimeMs: result.mtimeMs };
+              return;
+            }
+            if (Date.now() - lastEditAt.current < 1200) return;
+            const merged = await api('merge', { base_text: current.baseText,
+              ours: current.text, theirs: result.text });
+            const latest = live.current;
+            // The user may have typed while the merge was in flight; let the
+            // next tick merge again rather than overwriting those keystrokes.
+            if (latest.text !== current.text) return;
+            const nextText = merged.text;
+            live.current = { ...latest, text: nextText, baseText: result.text,
+              mtimeMs: result.mtimeMs, dirty: nextText !== result.text };
+            if (nextText !== latest.text) {
+              setFile((previous) => (previous === undefined ? previous
+                : { ...previous, text: nextText, mtimeMs: result.mtimeMs }));
+            }
+            setDirty(nextText !== result.text);
+            setNotice(merged.conflict ? '远端改动有冲突，已保留本地文本。' : '已合并远端改动。');
           } catch { /* the file may be mid-write; try again on the next tick */ }
-        }, 2000);
+        }, 1500);
         return () => clearInterval(timer);
       }, [api, sessionId, path, tab.visible]);
 
@@ -780,11 +812,16 @@ window.__ModuleLoader__.load({
         const startedAt = Date.now();
         try {
           const result = await api('writeFile', { ...where(), path,
-            text: live.current.text, mtime_ms: live.current.mtimeMs });
-          live.current = { ...live.current, mtimeMs: result.mtimeMs, dirty: false };
-          setFile((previous) => (previous === undefined ? previous : { ...previous, mtimeMs: result.mtimeMs }));
+            text: live.current.text, base_text: live.current.baseText,
+            mtime_ms: live.current.mtimeMs });
+          live.current = { text: result.text, baseText: result.text,
+            mtimeMs: result.mtimeMs, dirty: false };
+          setFile((previous) => (previous === undefined ? previous
+            : { ...previous, text: result.text, mtimeMs: result.mtimeMs }));
           setDirty(false);
-          setNotice('已保存，正在推送到 Overleaf。');
+          setNotice(result.merged
+            ? '已合并远端改动并保存，正在推送到 Overleaf。'
+            : '已保存，正在推送到 Overleaf。');
           setError('');
           setPushWatch(undefined);
           // Push now instead of waiting for fs.watch's debounce, then report
@@ -793,11 +830,20 @@ window.__ModuleLoader__.load({
           try {
             const status = await api('live', { ...where(), action: 'flush' });
             const outcome = pushOutcome(status, path, startedAt);
-            if (outcome.kind === 'error') { setNotice(''); setError(outcome.message); }
-            else setNotice(outcome.message);
+            const message = result.merged ? ({
+              pushed: '已合并远端改动并推送到 Overleaf。',
+              settled: '已合并远端改动并保存。',
+              local: '已合并远端改动并保存到本地；实时同步未连接。',
+              pending: '已合并远端改动并保存，推送仍在进行…',
+              error: outcome.message,
+            })[outcome.kind] : outcome.message;
+            if (outcome.kind === 'error') { setNotice(''); setError(message); }
+            else setNotice(message);
             if (outcome.kind === 'pending') setPushWatch({ path, startedAt });
           } catch {
-            setNotice('已保存到本地；实时同步不可用。');
+            setNotice(result.merged
+              ? '已合并远端改动并保存到本地；实时同步不可用。'
+              : '已保存到本地；实时同步不可用。');
           }
           return true;
         } catch (e) { setError(errorText(e)); return false; }
@@ -939,6 +985,7 @@ window.__ModuleLoader__.load({
           onSave: () => { void save(); },
           onChange: (text) => {
             live.current = { ...live.current, text, dirty: true };
+            lastEditAt.current = Date.now();
             setFile((previous) => (previous === undefined ? previous : { ...previous, text }));
             setDirty(true);
             setNotice('');
@@ -1034,7 +1081,7 @@ window.__ModuleLoader__.load({
       const [notice, setNotice] = useState('');
       const [compile, setCompile] = useState(undefined);
       const editorRef = useRef(undefined);
-      const bufferRef = useRef({ text: '', mtimeMs: 0 });
+      const bufferRef = useRef({ text: '', baseText: '', mtimeMs: 0 });
 
       const loadFiles = useCallback(async () => {
         const result = await api('files', { local_path: workspace.localDir });
@@ -1045,7 +1092,7 @@ window.__ModuleLoader__.load({
         setBusy(`open:${path}`);
         try {
           const result = await api('readFile', { local_path: workspace.localDir, path });
-          bufferRef.current = { text: result.text, mtimeMs: result.mtimeMs };
+          bufferRef.current = { text: result.text, baseText: result.text, mtimeMs: result.mtimeMs };
           setFile({ path, text: result.text, mtimeMs: result.mtimeMs });
           setDirty(false);
           setError('');
@@ -1079,19 +1126,29 @@ window.__ModuleLoader__.load({
         const startedAt = Date.now();
         try {
           const result = await api('writeFile', { local_path: workspace.localDir, path: file.path,
-            text: bufferRef.current.text, mtime_ms: bufferRef.current.mtimeMs });
-          bufferRef.current = { ...bufferRef.current, mtimeMs: result.mtimeMs };
-          setFile({ ...file, text: bufferRef.current.text, mtimeMs: result.mtimeMs });
+            text: bufferRef.current.text, base_text: bufferRef.current.baseText,
+            mtime_ms: bufferRef.current.mtimeMs });
+          bufferRef.current = { text: result.text, baseText: result.text, mtimeMs: result.mtimeMs };
+          setFile({ ...file, text: result.text, mtimeMs: result.mtimeMs });
           setDirty(false);
-          setNotice('已保存，正在推送到 Overleaf。');
+          setNotice(result.merged ? '已合并远端改动并保存，正在推送到 Overleaf。'
+            : '已保存，正在推送到 Overleaf。');
           setError('');
           try {
             const status = await api('live', { local_path: workspace.localDir, action: 'flush' });
             const outcome = pushOutcome(status, file.path, startedAt);
-            if (outcome.kind === 'error') { setNotice(''); setError(outcome.message); }
-            else setNotice(outcome.message);
+            const message = result.merged ? ({
+              pushed: '已合并远端改动并推送到 Overleaf。',
+              settled: '已合并远端改动并保存。',
+              local: '已合并远端改动并保存到本地；实时同步未连接。',
+              pending: '已合并远端改动并保存，推送仍在进行…',
+              error: outcome.message,
+            })[outcome.kind] : outcome.message;
+            if (outcome.kind === 'error') { setNotice(''); setError(message); }
+            else setNotice(message);
           } catch {
-            setNotice('已保存到本地；实时同步不可用。');
+            setNotice(result.merged ? '已合并远端改动并保存到本地；实时同步不可用。'
+              : '已保存到本地；实时同步不可用。');
           }
           return true;
         } catch (e) { setError(errorText(e)); return false; } finally { setBusy(''); }
