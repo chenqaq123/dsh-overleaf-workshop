@@ -81,13 +81,14 @@ window.__ModuleLoader__.load({
 
     /**
      * CodeMirror shell shared by the sidebar source tab and the panel editor.
-     * DSH's theme exposes the user's "code font" as a family and a size on body;
-     * the editor must track those variables instead of hardcoding a font.
+     * DSH exposes the user's chosen code font family, and its body text size as
+     * CSS variables on body; the editor follows that text size rather than the
+     * separate code-block size so it matches the size selected in Settings.
      */
     const EDITOR_CSS = `
       .dsh-ol-cm-wrap{display:flex;flex:1;min-width:0;min-height:0;position:relative}
       .dsh-ol-cm{flex:1;min-width:0;min-height:0;overflow:hidden;overscroll-behavior:contain}
-      .dsh-ol-cm .CodeMirror{height:100%;background:transparent;color:var(--dsw-alias-label-primary,CanvasText);font-family:var(--ds-font-family-code,ui-monospace,SFMono-Regular,monospace);font-size:var(--dsh-code-font-size,12px);line-height:calc(19px + var(--dsh-code-font-delta,0px));overscroll-behavior:contain}
+      .dsh-ol-cm .CodeMirror{height:100%;background:transparent;color:var(--dsw-alias-label-primary,CanvasText);font-family:var(--ds-font-family-code,ui-monospace,SFMono-Regular,monospace);font-size:var(--dsh-content-font-size,var(--dsh-code-font-size,12px));line-height:calc(22px + var(--dsh-content-font-delta,0px));overscroll-behavior:contain}
       .dsh-ol-cm .CodeMirror pre.CodeMirror-line,.dsh-ol-cm .CodeMirror pre.CodeMirror-line-like{font-family:inherit;font-size:inherit;line-height:inherit}
       .dsh-ol-cm .CodeMirror-gutters{background:transparent;border-right:1px solid color-mix(in srgb,currentColor 9%,transparent)}
       .dsh-ol-cm .CodeMirror-linenumber{color:color-mix(in srgb,currentColor 38%,transparent);padding:0 8px 0 4px}
@@ -95,7 +96,7 @@ window.__ModuleLoader__.load({
       .dsh-ol-cm .CodeMirror-selected,.dsh-ol-cm .CodeMirror-focused .CodeMirror-selected{background:color-mix(in srgb,#5684ec 24%,transparent)}
       .dsh-ol-cm .CodeMirror-activeline-background{background:color-mix(in srgb,currentColor 5%,transparent)}
       .dsh-ol-cm .CodeMirror-matchingbracket{color:#5684ec!important;text-decoration:none;border-bottom:1px solid #5684ec}
-      .dsh-ol-cm .CodeMirror-dialog{background:Canvas;color:CanvasText;border-color:color-mix(in srgb,currentColor 14%,transparent);font-family:var(--ds-font-family-code,ui-monospace,SFMono-Regular,monospace);font-size:var(--dsh-code-font-size,12px)}
+      .dsh-ol-cm .CodeMirror-dialog{background:Canvas;color:CanvasText;border-color:color-mix(in srgb,currentColor 14%,transparent);font-family:var(--ds-font-family-code,ui-monospace,SFMono-Regular,monospace);font-size:var(--dsh-content-font-size,var(--dsh-code-font-size,12px))}
       .dsh-ol-cm .CodeMirror-dialog input{background:transparent;color:inherit;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:4px;outline:none;padding:2px 5px}
       .dsh-ol-cm .cm-keyword,.dsh-ol-cm .cm-command{color:#8b3fc7}
       .dsh-ol-cm .cm-atom,.dsh-ol-cm .cm-number{color:#b45309}
@@ -111,7 +112,7 @@ window.__ModuleLoader__.load({
       body[data-ds-dark-theme] .dsh-ol-cm .cm-comment{color:#8a8f98}
       body[data-ds-dark-theme] .dsh-ol-cm .cm-tag,body[data-ds-dark-theme] .dsh-ol-cm .cm-attribute,body[data-ds-dark-theme] .dsh-ol-cm .cm-bracket{color:#b6bcc6}
       .dsh-ol-cm-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;opacity:.5;pointer-events:none}
-      .dsh-ol-cm-fallback{flex:1;min-height:0;width:100%;box-sizing:border-box;border:0;outline:none;resize:none;background:transparent;color:inherit;font-family:var(--ds-font-family-code,ui-monospace,SFMono-Regular,monospace);font-size:var(--dsh-code-font-size,12px);line-height:calc(19px + var(--dsh-code-font-delta,0px));padding:6px 12px 14px;tab-size:2;white-space:pre;overflow:auto}
+      .dsh-ol-cm-fallback{flex:1;min-height:0;width:100%;box-sizing:border-box;border:0;outline:none;resize:none;background:transparent;color:inherit;font-family:var(--ds-font-family-code,ui-monospace,SFMono-Regular,monospace);font-size:var(--dsh-content-font-size,var(--dsh-code-font-size,12px));line-height:calc(22px + var(--dsh-content-font-delta,0px));padding:6px 12px 14px;tab-size:2;white-space:pre;overflow:auto}
       .dsh-ol-cm-panel{min-height:480px;height:60vh;display:flex}
       .dsh-ol-fa{display:flex;align-items:center;gap:3px;flex:none}
       .dsh-ol-fa>button{font:inherit;font-size:10.5px;line-height:1;cursor:pointer;border-radius:5px;padding:4px 5px;min-height:22px;border:1px solid color-mix(in srgb,currentColor 14%,transparent);color:inherit;background:transparent;white-space:nowrap}
@@ -463,7 +464,14 @@ window.__ModuleLoader__.load({
         }
       };
 
-      return h('div', { className: `dsh-ol-cm-wrap${className === undefined ? '' : ` ${className}`}` },
+      return h('div', {
+        className: `dsh-ol-cm-wrap${className === undefined ? '' : ` ${className}`}`,
+        // DSH's GenUI plugin sweeps every <pre>/<span> in the document. A
+        // CodeMirror buffer has hundreds of them, and that O(n²) sweep pegs a
+        // renderer core. The fence marker is GenUI's own "do not scan this
+        // subtree" signal, so the editor no longer participates in its sweeps.
+        'data-genui-svg-fence': '',
+      },
         fallback
           ? h('textarea', {
             ref: fallbackRef,
