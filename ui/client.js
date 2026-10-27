@@ -74,6 +74,7 @@ window.__ModuleLoader__.load({
       .dsh-ol-flipped>[class*="sidebarCol"]{grid-column:1!important;grid-row:1!important}
       .dsh-ol-flipped>[class*="rightbarCol"]{grid-column:2!important;grid-row:1!important}
       .dsh-ol-flipped>[class*="centerCol"]{grid-column:3!important;grid-row:1!important}
+      .dsh-ol-flipped>[class*="rightbarCol"] [data-sidebar-right-panel][data-sidebar-right-open="true"]{width:100%!important;--dsh-sidebar-width:100%!important}
       .dsh-ol-flipped>[class*="handle"][data-side="rightbar"]{display:none!important}
       .dsh-ol-flip-handle{display:none;position:absolute;top:0;bottom:0;width:8px;margin-left:-4px;cursor:col-resize;touch-action:none;z-index:12}
     `;
@@ -197,6 +198,75 @@ window.__ModuleLoader__.load({
     }
 
     const basenameOf = (path) => String(path).split('/').pop() ?? String(path);
+
+    /** The conversation keeps the width it has in the reference three-column layout. */
+    const CHAT_WIDTH = 400;
+    /** The directory pane takes a quarter of the editor area; the source pane takes the rest. */
+    const FILES_PANE_RATIO = 0.25;
+
+    /**
+     * The store actions behind the mounted dock. The public Sidebar controller
+     * can open and focus tabs, but moving a tab or setting a split ratio is not
+     * part of it; those live on the pane actions the dock's tab seat receives.
+     * Resolve them from the mounted tab DOM, and degrade gracefully when a
+     * future renderer stops exposing the same fiber props.
+     */
+    function findPaneActions(sessionId) {
+      const bar = document.querySelector('[class*="rightbarCol"]');
+      if (bar === null) return undefined;
+      for (const anchor of bar.querySelectorAll('[data-sidebar-right-tab],[data-dockkit-tab]')) {
+        const key = Object.keys(anchor).find((name) => name.startsWith('__reactFiber$'));
+        let fiber = key === undefined ? undefined : anchor[key];
+        for (let depth = 0; depth < 16 && fiber !== undefined && fiber !== null;
+          depth += 1, fiber = fiber.return) {
+          const props = fiber.memoizedProps;
+          if (props?.sessionId === sessionId && typeof props.actions?.resizeSplit === 'function') {
+            return props.actions;
+          }
+        }
+      }
+      return undefined;
+    }
+
+    /** Visible dock panes of the mounted right Sidebar, left to right. */
+    function visibleDockPanes() {
+      const bar = document.querySelector('[class*="rightbarCol"]');
+      if (bar === null) return [];
+      return [...bar.querySelectorAll('[data-dockkit-pane]')]
+        .filter((pane) => pane.getBoundingClientRect().width > 0
+          && pane.closest('[hidden],[aria-hidden="true"]') === null)
+        .sort((left, right) => left.getBoundingClientRect().x - right.getBoundingClientRect().x);
+    }
+
+    /** The pane holding a visible tab chip, or undefined. */
+    function paneOfTab(tabId) {
+      const bar = document.querySelector('[class*="rightbarCol"]');
+      if (bar === null) return undefined;
+      const tab = [...bar.querySelectorAll('[data-dockkit-tab]')]
+        .find((element) => element.getAttribute('data-dockkit-tab') === tabId
+          && element.getBoundingClientRect().width > 0
+          && element.closest('[hidden],[aria-hidden="true"]') === null);
+      return tab?.closest('[data-dockkit-pane]') ?? undefined;
+    }
+
+    /**
+     * The editor pane may have been seeded with a files page by a split. Close
+     * it once real editor tabs sit beside it; the tree stays in the left pane.
+     */
+    function pruneEditorPanes(sessionId, sidebar) {
+      const panes = visibleDockPanes();
+      if (panes.length < 2) return;
+      const leftId = panes[0].dataset.dockkitPane;
+      const rightId = panes[1].dataset.dockkitPane;
+      const tabs = sidebar.tabsIn?.(sessionId) ?? [];
+      if (!tabs.some((tab) => tab.kind === 'files' && paneOfTab(tab.id)?.dataset.dockkitPane === leftId)) return;
+      const rightTabs = tabs.filter((tab) => paneOfTab(tab.id)?.dataset.dockkitPane === rightId);
+      if (!rightTabs.some((tab) => tab.kind !== 'files' && tab.kind !== 'guide')) return;
+      for (const tab of rightTabs) {
+        if (tab.kind !== 'files' && tab.kind !== 'guide') continue;
+        try { sidebar.closeIn?.(sessionId, tab.id); } catch { /* it can stay */ }
+      }
+    }
 
     /** Select one 1-based line in the editor and bring it into view. */
     function selectLine(node, text, line) {
@@ -980,28 +1050,37 @@ window.__ModuleLoader__.load({
       let frameObserver;
       let resizeObserver;
       let drag;
+      /** Conversation width in the flipped layout; dragging the grip changes it. */
+      let chatWidth = CHAT_WIDTH;
+      /** True while this plugin collapsed the native project sidebar for the three columns. */
+      let collapsedSidebar = false;
+      let collapseTimer;
+      let restoreTimer;
+      let lastCollapseToggle = 0;
 
       // The harness's own divider assumes the panel is on the right: dragging it
       // away from the panel's edge grows the centre. With the tracks swapped the
-      // pointer moves the other way, so a small divider of our own drives the
-      // same width preference in the direction the boundary visibly moves.
+      // pointer moves the other way, so a small divider of our own moves the
+      // boundary between the editor and the conversation.
       const grip = document.createElement('div');
       grip.className = 'dsh-ol-flip-handle';
       grip.setAttribute('role', 'separator');
       grip.setAttribute('aria-orientation', 'vertical');
       grip.addEventListener('pointerdown', (event) => {
         if (event.button !== 0 || frame === undefined) return;
-        if (typeof ctx.layout?.panels?.setRightbar !== 'function') return;
         event.preventDefault();
-        const column = frame.querySelector(':scope > [class*="rightbarCol"]');
-        drag = { id: event.pointerId, start: event.clientX,
-          base: column?.getBoundingClientRect().width ?? 0 };
+        drag = { id: event.pointerId, start: event.clientX, base: chatWidth };
         grip.setPointerCapture(event.pointerId);
       });
       grip.addEventListener('pointermove', (event) => {
         if (drag?.id !== event.pointerId) return;
         event.preventDefault();
-        ctx.layout.panels.setRightbar(drag.base + event.clientX - drag.start);
+        const parsed = frame === undefined ? undefined : parse(frame.style.gridTemplateColumns);
+        const room = frame === undefined ? 0 : frame.clientWidth - (parsed?.sidebar ?? 0);
+        // The grip trades width between the editor area and the conversation.
+        chatWidth = Math.max(CHAT_WIDTH, Math.min(Math.max(CHAT_WIDTH, room - 300),
+          drag.base - (event.clientX - drag.start)));
+        schedule();
       });
       const endDrag = (event) => {
         if (drag?.id !== event.pointerId) return;
@@ -1052,9 +1131,12 @@ window.__ModuleLoader__.load({
           hideGrip();
           return;
         }
-        const available = frame.clientWidth - parsed.sidebar - 400;
-        const rightbar = Math.max(0, Math.min(parsed.rightbarMax, available));
-        const columns = `${parsed.sidebar}px minmax(0px, ${parsed.rightbarMax}px) minmax(400px, 1fr)`;
+        const available = frame.clientWidth - parsed.sidebar - chatWidth;
+        // The native right track is capped at 70% of the window; the reference
+        // three-column layout gives the editor area the rest of the width and
+        // leaves the conversation a fixed 400px. Respect a closed right panel.
+        const rightbar = parsed.rightbarMax === 0 ? 0 : Math.max(0, available);
+        const columns = `${parsed.sidebar}px minmax(0px, ${rightbar}px) minmax(400px, 1fr)`;
         const handle = `${parsed.sidebar + rightbar}px`;
         if (frame.style.getPropertyValue('--dsh-ol-flipped-columns') !== columns) {
           frame.style.setProperty('--dsh-ol-flipped-columns', columns);
@@ -1080,6 +1162,25 @@ window.__ModuleLoader__.load({
         if (disposed || active === wanted) return;
         wanted = active;
         if (!wanted) {
+          clearInterval(collapseTimer);
+          collapseTimer = undefined;
+          clearTimeout(restoreTimer);
+          restoreTimer = undefined;
+          const restore = collapsedSidebar;
+          collapsedSidebar = false;
+          // Leave the native project list as the user found it when they leave
+          // Overleaf, unless they expanded it themselves in the meantime. The
+          // width can settle a render after the class is removed, so check late.
+          if (restore) {
+            restoreTimer = setTimeout(() => {
+              restoreTimer = undefined;
+              if (disposed || wanted) return;
+              const width = document.querySelector('[class*="sidebarCol"]')?.getBoundingClientRect().width;
+              if (width === 0 && typeof ctx.layout?.toggleSidebar === 'function') {
+                try { ctx.layout.toggleSidebar(); } catch { /* the next project keeps it collapsed */ }
+              }
+            }, 900);
+          }
           frame?.classList.remove('dsh-ol-flipped');
           frame?.style.removeProperty('--dsh-ol-flipped-columns');
           frame?.style.removeProperty('--dsh-ol-flipped-handle');
@@ -1092,7 +1193,50 @@ window.__ModuleLoader__.load({
           hideGrip();
           return;
         }
+        clearTimeout(restoreTimer);
+        restoreTimer = undefined;
         apply();
+        // Entering or returning to an Overleaf Session always starts with the
+        // file tree as the left column.
+        collapseSidebar();
+      };
+
+      /** One collapse attempt; uses the native track width, which updates first. */
+      const tryCollapse = () => {
+        if (disposed || !wanted) return;
+        if (frame === undefined) frame = document.querySelector('[class*="centerCol"]')?.parentElement;
+        const parsed = frame === undefined ? undefined : parse(frame.style.gridTemplateColumns);
+        const width = parsed?.sidebar;
+        if (typeof width !== 'number' || width === 0) return;
+        if (typeof ctx.layout?.toggleSidebar !== 'function') return;
+        // A render can lag behind the store; never toggle twice for one state.
+        if (Date.now() - lastCollapseToggle < 600) return;
+        try { ctx.layout.toggleSidebar(); } catch { return; }
+        lastCollapseToggle = Date.now();
+        collapsedSidebar = true;
+        // The frame can be replaced by the toggle's render; settle a few times.
+        for (const delay of [0, 80, 250, 600]) setTimeout(schedule, delay);
+      };
+
+      /**
+       * Collapse the native project/session sidebar so the file tree is the
+       * leftmost column. Retries briefly because the layout can restore the
+       * sidebar's width in the render that follows a Session switch. After that
+       * window, expanding it again mid-session stays the user's choice.
+       */
+      const collapseSidebar = () => {
+        if (disposed || !wanted) return;
+        clearInterval(collapseTimer);
+        tryCollapse();
+        const until = Date.now() + 4000;
+        collapseTimer = setInterval(() => {
+          if (disposed || !wanted || Date.now() > until) {
+            clearInterval(collapseTimer);
+            collapseTimer = undefined;
+            return;
+          }
+          tryCollapse();
+        }, 400);
       };
 
       const onResize = () => schedule();
@@ -1101,16 +1245,28 @@ window.__ModuleLoader__.load({
       // it; re-find it when the section's DOM observer calls setActive again.
       return {
         setActive,
+        collapseSidebar,
         refresh() {
-          if (wanted && (frame === undefined || !frame.isConnected
-            || !frame.classList.contains('dsh-ol-flipped'))) apply();
+          if (!wanted) return;
+          if (frame !== undefined && !frame.isConnected) frame = undefined;
+          if (scheduled !== undefined) { clearTimeout(scheduled); scheduled = undefined; }
+          apply();
         },
         dispose() {
           disposed = true;
+          clearInterval(collapseTimer);
+          clearTimeout(restoreTimer);
           window.removeEventListener('resize', onResize);
           frameObserver?.disconnect();
           resizeObserver?.disconnect();
           if (scheduled !== undefined) clearTimeout(scheduled);
+          if (collapsedSidebar) {
+            const width = document.querySelector('[class*="sidebarCol"]')?.getBoundingClientRect().width;
+            if (width === 0 && typeof ctx.layout?.toggleSidebar === 'function') {
+              try { ctx.layout.toggleSidebar(); } catch { /* leaving the app anyway */ }
+            }
+            collapsedSidebar = false;
+          }
           frame?.classList.remove('dsh-ol-flipped');
           frame?.style.removeProperty('--dsh-ol-flipped-columns');
           frame?.style.removeProperty('--dsh-ol-flipped-handle');
@@ -1443,6 +1599,16 @@ window.__ModuleLoader__.load({
       const timer = setInterval(() => {
         if (document.visibilityState === 'visible') void refresh();
       }, 4000);
+      // A split can seed a second files page after the entry pass has run; keep
+      // the editor pane free of it while an Overleaf Session is on screen.
+      const tidyTimer = setInterval(() => {
+        if (document.visibilityState !== 'visible') return;
+        const service = ctx.get?.('sidebarRight');
+        const sessionId = service?.mounted?.getSnapshot?.();
+        if (typeof sessionId === 'string' && isKnownSession(sessionId)) {
+          pruneEditorPanes(sessionId, service);
+        }
+      }, 2000);
 
       attach();
       void refresh();
@@ -1452,12 +1618,15 @@ window.__ModuleLoader__.load({
 
       return {
         refresh,
+        collapseSidebar() { layout.collapseSidebar(); },
+        refreshLayout() { layout.refresh(); },
         dispose() {
           disposed = true;
           observer.disconnect();
           unsubscribe?.();
           unsubscribeSelection?.();
           clearInterval(timer);
+          clearInterval(tidyTimer);
           clearTimeout(flashTimer);
           if (frame !== undefined) cancelAnimationFrame(frame);
           if (hiddenFrame !== undefined) clearTimeout(hiddenFrame);
@@ -1492,6 +1661,86 @@ window.__ModuleLoader__.load({
 
         const workspaceIdFor = (localDir) => (ctx.workspaces.list.getSnapshot?.().items ?? [])
           .find((item) => item.path === localDir)?.workspaceId;
+
+        /**
+         * Turn the right Sidebar into the three-column arrangement: the file
+         * tree alone on the left of the dock, every opened file in the pane next
+         * to it. Tabs are moved with the tab-scoped pane actions; closing and
+         * reopening them would drop an unsaved editor buffer.
+         */
+        async function arrangePanes(sessionId, sidebar) {
+          const actions = findPaneActions(sessionId);
+          const filesTab = (sidebar.tabsIn?.(sessionId) ?? []).find((tab) => tab.kind === 'files');
+          if (filesTab === undefined) return;
+          const before = sidebar.active?.();
+
+          let panes = visibleDockPanes();
+          if (panes.length < 2) {
+            const filesPane = paneOfTab(filesTab.id);
+            if (filesPane !== undefined && actions?.splitPane !== undefined) {
+              try { actions.splitPane(sessionId, filesPane.dataset.dockkitPane); } catch { /* no room to split */ }
+              await wait(320);
+            }
+            panes = visibleDockPanes();
+          }
+          if (panes.length < 2) return;
+
+          const left = panes[0];
+          const right = panes[1];
+          const leftId = left.dataset.dockkitPane;
+          const rightId = right.dataset.dockkitPane;
+
+          // Restored layouts can have the files tab on either side; the tree
+          // belongs on the left regardless. A split may also have seeded a
+          // second files page in the new pane, so pick the left one if any.
+          const leftFiles = (sidebar.tabsIn?.(sessionId) ?? [])
+            .find((tab) => tab.kind === 'files' && paneOfTab(tab.id) === left);
+          const treeTab = leftFiles ?? filesTab;
+          if (paneOfTab(treeTab.id) !== left) {
+            try { actions?.placeTab?.(sessionId, treeTab.id, leftId, 0); } catch { /* leave it */ }
+            await wait(160);
+          }
+
+          for (const tab of sidebar.tabsIn?.(sessionId) ?? []) {
+            if (tab.kind === 'files') continue;
+            if (paneOfTab(tab.id)?.dataset.dockkitPane !== leftId) continue;
+            try { actions?.placeTab?.(sessionId, tab.id, rightId); } catch { /* leave it */ }
+            await wait(80);
+          }
+
+          // A split seeds a default page; the editor pane must not keep either
+          // a guide or another files page once the real tabs have arrived.
+          const rightTabs = (sidebar.tabsIn?.(sessionId) ?? [])
+            .filter((tab) => paneOfTab(tab.id)?.dataset.dockkitPane === rightId);
+          if (rightTabs.some((tab) => tab.kind !== 'files' && tab.kind !== 'guide')) {
+            for (const tab of rightTabs) {
+              if (tab.kind !== 'files' && tab.kind !== 'guide') continue;
+              try { sidebar.closeIn?.(sessionId, tab.id); } catch { /* it can stay */ }
+            }
+          }
+          await wait(120);
+
+          const split = left.closest('[data-dockkit-split]');
+          if (split !== null && actions?.resizeSplit !== undefined) {
+            try {
+              actions.resizeSplit(sessionId, split.dataset.dockkitSplit,
+                [FILES_PANE_RATIO, 1 - FILES_PANE_RATIO]);
+            } catch { /* the default split still works */ }
+          }
+
+          // Keep the file the user was looking at in front; otherwise prefer
+          // this plugin's editable tab over the PDF.
+          const currentPane = before === undefined ? undefined : paneOfTab(before.id);
+          const preferred = before !== undefined && before.kind !== 'files' && currentPane === right
+            ? before
+            : (sidebar.tabsIn?.(sessionId) ?? []).find((tab) => tab.kind === 'overleaf-source'
+              && paneOfTab(tab.id) === right)
+              ?? (sidebar.tabsIn?.(sessionId) ?? []).find((tab) => paneOfTab(tab.id) === right);
+          if (preferred !== undefined) {
+            try { sidebar.focus?.(preferred.id); } catch { /* keep the pane's tab */ }
+          }
+          pruneEditorPanes(sessionId, sidebar);
+        }
 
         /**
          * Switch to a workspace and open one of its conversations.
@@ -1559,8 +1808,11 @@ window.__ModuleLoader__.load({
             sidebar.openTab('files');
           };
           await attempt(openFiles);
+          await wait(120);
           if (info?.hasPdf === true) {
-            await attempt(() => sidebar.openResource(fileAddress(sessionId, 'output.pdf'), { preferNewPane: true }));
+            const split = visibleDockPanes().length < 2;
+            await attempt(() => sidebar.openResource(fileAddress(sessionId, 'output.pdf'),
+              split ? { preferNewPane: true } : {}));
           }
           if (info?.mainFile !== undefined && info?.mainFile !== null) {
             // Name our type explicitly: the default registry ranking also has
@@ -1580,10 +1832,25 @@ window.__ModuleLoader__.load({
                 options.replaceTab = editor.id;
               }
             } catch { /* placement still works without the hint */ }
+            // The PDF split is the normal case; without one, the source splits
+            // the files pane instead. A restored tab in that pane is moved by
+            // `arrangePanes` after it opens.
+            if (options.replaceTab === undefined && visibleDockPanes().length < 2) options.preferNewPane = true;
             // Last, so opening the PDF cannot steal focus from the editor.
             const opened = await attempt(() => sidebar.openResource(address, options));
             if (!opened) await attempt(() => sidebar.openResource(address));
           }
+          await arrangePanes(sessionId, sidebar);
+          // A restored split can seed its files page a render after the tabs
+          // arrive; clean up once more after the layout settles.
+          await wait(400);
+          pruneEditorPanes(sessionId, sidebar);
+          await wait(600);
+          pruneEditorPanes(sessionId, sidebar);
+          // The file tree is the left column; the project list would be a
+          // fourth one. It comes back when the project is left.
+          sidebarSection?.collapseSidebar();
+          sidebarSection?.refreshLayout();
         }
 
         /** Open a workspace record from the panel or sidebar section, registering it when needed. */
@@ -1598,10 +1865,58 @@ window.__ModuleLoader__.load({
           await enterWorkspace(workspaceId, record.localDir, options);
         }
 
-        let sidebar;
+        /**
+         * The built-in file tree opens a file in whichever dock pane is active.
+         * Clicking a row makes the tree's pane active, which would put the file
+         * back into the directory column. Focus the editor pane in the capture
+         * phase instead, before the tree's own click handler runs.
+         */
+        const installFilePaneGuard = () => {
+          let focusTimer;
+          const onClick = (event) => {
+            const target = event.target instanceof Element ? event.target : undefined;
+            const row = target?.closest('[role="button"][title]');
+            if (row === null || row === undefined) return;
+            const name = (row.getAttribute('title') ?? '').split('/').pop() ?? '';
+            // Folders toggle in place; only actual files leave the column.
+            if (name.length === 0 || !name.includes('.') || String(row.className).includes('explorerDir')) return;
+            const pane = row.closest('[data-dockkit-pane]');
+            if (pane === null) return;
+            const service = sidebarService();
+            const sessionId = service?.mounted?.getSnapshot?.();
+            if (typeof sessionId !== 'string' || !isKnownSession(sessionId)) return;
+            const tabs = service.tabsIn?.(sessionId) ?? [];
+            const filesTab = tabs.find((tab) => tab.kind === 'files');
+            if (filesTab === undefined || paneOfTab(filesTab.id) !== pane) return;
+            const editorTab = tabs.find((tab) => tab.kind !== 'files' && tab.kind !== 'guide'
+              && paneOfTab(tab.id) !== undefined && paneOfTab(tab.id) !== pane);
+            if (editorTab === undefined) return;
+            const editorPaneId = paneOfTab(editorTab.id)?.dataset.dockkitPane;
+            try { service.focus?.(editorTab.id); } catch { /* the tree's own open still works */ }
+            // The click's own focus can land after the tree's handler; put the
+            // caret back on whichever editor tab that handler selected.
+            clearTimeout(focusTimer);
+            focusTimer = setTimeout(() => {
+              const editorPane = visibleDockPanes()
+                .find((candidate) => candidate.dataset.dockkitPane === editorPaneId);
+              const selected = editorPane?.querySelector('[data-dockkit-tab][aria-selected="true"]');
+              const tabId = selected?.getAttribute('data-dockkit-tab');
+              if (tabId === null || tabId === undefined) return;
+              try { service.focus?.(tabId); } catch { /* keep the selection */ }
+            }, 80);
+          };
+          document.addEventListener('click', onClick, true);
+          return () => {
+            clearTimeout(focusTimer);
+            document.removeEventListener('click', onClick, true);
+          };
+        };
+        ctx.effect(() => installFilePaneGuard(), 'dsh-overleaf: file rows open in the editor pane');
+
+        let sidebarSection;
         ctx.effect(() => {
-          sidebar = installOverleafSidebar(ctx, api, PANEL, openRecord);
-          return () => { sidebar.dispose(); sidebar = undefined; };
+          sidebarSection = installOverleafSidebar(ctx, api, PANEL, openRecord);
+          return () => { sidebarSection?.dispose(); sidebarSection = undefined; };
         });
 
         // `.tex` & friends inside an Overleaf workspace open in the editable tab;
