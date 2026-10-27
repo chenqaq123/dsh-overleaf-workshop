@@ -86,8 +86,8 @@ window.__ModuleLoader__.load({
      */
     const EDITOR_CSS = `
       .dsh-ol-cm-wrap{display:flex;flex:1;min-width:0;min-height:0;position:relative}
-      .dsh-ol-cm{flex:1;min-width:0;min-height:0;overflow:hidden}
-      .dsh-ol-cm .CodeMirror{height:100%;background:transparent;color:var(--dsw-alias-label-primary,CanvasText);font-family:var(--ds-font-family-code,ui-monospace,SFMono-Regular,monospace);font-size:var(--dsh-code-font-size,12px);line-height:calc(19px + var(--dsh-code-font-delta,0px))}
+      .dsh-ol-cm{flex:1;min-width:0;min-height:0;overflow:hidden;overscroll-behavior:contain}
+      .dsh-ol-cm .CodeMirror{height:100%;background:transparent;color:var(--dsw-alias-label-primary,CanvasText);font-family:var(--ds-font-family-code,ui-monospace,SFMono-Regular,monospace);font-size:var(--dsh-code-font-size,12px);line-height:calc(19px + var(--dsh-code-font-delta,0px));overscroll-behavior:contain}
       .dsh-ol-cm .CodeMirror pre.CodeMirror-line,.dsh-ol-cm .CodeMirror pre.CodeMirror-line-like{font-family:inherit;font-size:inherit;line-height:inherit}
       .dsh-ol-cm .CodeMirror-gutters{background:transparent;border-right:1px solid color-mix(in srgb,currentColor 9%,transparent)}
       .dsh-ol-cm .CodeMirror-linenumber{color:color-mix(in srgb,currentColor 38%,transparent);padding:0 8px 0 4px}

@@ -30,6 +30,8 @@ export function createMock() {
     projects: [{ id: 'p1', name: 'Mock Paper', lastUpdated: new Date().toISOString(), accessLevel: 'owner' }],
     zipFiles: { 'main.tex': strToU8('\\documentclass{article}\n\\begin{document}\nHello\n\\end{document}\n'),
       'intro.tex': strToU8('Intro line.\n'), 'sections/methods.tex': strToU8('Methods.\n') },
+    /** Binary fileRef payloads served by `/project/:id/file/:fileId`. */
+    fileBytes: { file1: Buffer.from('PNG mock') },
     compileResult: 'success',
     /** Delay (ms) before an applyOtUpdate is acknowledged, to model a slow wire. */
     applyDelayMs: 0,
@@ -208,6 +210,14 @@ export function createMock() {
       const request_ = JSON.parse(body.toString('utf8'));
       state.folders.push(request_);
       return json(200, { _id: `fol-new-${state.folders.length}`, name: request_.name });
+    }
+    const fileRef = /^\/project\/p1\/file\/([^/]+)$/u.exec(path);
+    if (fileRef !== null && request.method === 'GET') {
+      if (!cookieOk) { response.writeHead(302); return response.end(); }
+      const bytes = state.fileBytes[fileRef[1]];
+      if (bytes === undefined) return json(404, { error: 'not found' });
+      response.writeHead(200, { 'content-type': 'application/octet-stream' });
+      return response.end(bytes);
     }
     const destroy = /^\/project\/p1\/(doc|file|folder)\/([^/]+)$/u.exec(path);
     if (destroy !== undefined && request.method === 'DELETE') {

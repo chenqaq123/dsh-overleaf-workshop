@@ -11618,6 +11618,15 @@
   }
 
   /**
+   * Render everything for ordinary LaTeX files: CodeMirror's viewport trimming
+   * swaps DOM nodes while scrolling, which shows up as stutter on a trackpad.
+   * Very large files keep a viewport so opening them stays cheap.
+   */
+  function viewportFor(text) {
+    return text.split('\n').length > 1500 ? 20 : Infinity;
+  }
+
+  /**
    * Create an editor in `host`.
    * @param {HTMLElement} host
    * @param {object} options
@@ -11626,6 +11635,7 @@
     options = options || {};
     host.textContent = '';
     var suppress = false;
+    var initial = typeof options.value === 'string' ? options.value : '';
     var save = typeof options.onSave === 'function' ? options.onSave : function () {};
     var change = typeof options.onChange === 'function' ? options.onChange : function () {};
     function onChange() {
@@ -11633,11 +11643,11 @@
     }
 
     var cm = CM(host, {
-      value: typeof options.value === 'string' ? options.value : '',
+      value: initial,
       mode: options.mode || 'text/x-stex',
       lineNumbers: true,
-      lineWrapping: false,
-      viewportMargin: 10,
+      lineWrapping: true,
+      viewportMargin: viewportFor(initial),
       matchBrackets: true,
       autoCloseBrackets: true,
       styleActiveLine: true,
@@ -11672,6 +11682,7 @@
       suppress = true;
       cm.setValue(text);
       suppress = false;
+      cm.setOption('viewportMargin', viewportFor(text));
       cm.setCursor(Math.min(cursor.line, Math.max(0, cm.lineCount() - 1)),
         Math.min(cursor.ch, cm.getLine(Math.min(cursor.line, Math.max(0, cm.lineCount() - 1))).length));
       cm.scrollTo(scroll.left, scroll.top);

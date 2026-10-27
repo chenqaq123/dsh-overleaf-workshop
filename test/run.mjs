@@ -327,6 +327,23 @@ await test('initial zip content is not pushed over newer realtime content', asyn
   await canonicalLive.stop();
 });
 
+await test('bootstrap seeds docs and binary refs without a zip', async () => {
+  const dir = freshWorkspace('bootstrap');
+  const manager = new LiveManager({ runtime: { createClient: () => client }, log: () => {} });
+  const status = await manager.bootstrap(dir, { version: 1, server: baseUrl, projectId: 'p1',
+    projectName: 'Mock Paper', files: {} });
+  assert.equal(status.phase, 'connected');
+  assert.equal(status.hydrated.failed.length, 0);
+  assert.equal(status.hydrated.downloaded, 1);
+  assert.ok(existsSync(join(dir, 'fig.png')));
+  assert.ok(existsSync(join(dir, 'sections', 'methods.tex')));
+  assert.ok(readFileSync(join(dir, 'main.tex'), 'utf8').includes('Hello'));
+  const state = readProjectState(dir);
+  assert.ok(state.files['fig.png'], 'binary fileRef recorded in state');
+  assert.ok(state.files['main.tex'], 'joined document recorded in state');
+  await manager.stop(dir);
+});
+
 const liveDir = join(scratch, 'live');
 mkdirSync(liveDir, { recursive: true });
 writeProjectState(liveDir, { version: 1, server: baseUrl, projectId: 'p1', projectName: 'Mock Paper', files: {} });

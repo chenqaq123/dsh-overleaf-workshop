@@ -1,11 +1,12 @@
 /**
  * dsh-overleaf-workshop — open Overleaf projects as local DSH workspaces.
  *
- * An Overleaf workspace is a plain local directory pulled from the project zip,
- * so the harness's normal `read`/`write`/`edit`/`glob`/`grep`/`bash` tools, the
- * sidebar file tree and the built-in PDF preview all work unchanged. The plugin
- * adds what Overleaf-specific flows need: a session store for the server cookie,
- * a panel for login and opening projects, and four agent tools (`overleaf_status`,
+ * An Overleaf workspace is a plain local directory, seeded on first open from
+ * the live project tree (with a zip fallback), so the harness's normal
+ * `read`/`write`/`edit`/`glob`/`grep`/`bash` tools, the sidebar file tree and
+ * the built-in PDF preview all work unchanged. The plugin adds what
+ * Overleaf-specific flows need: a session store for the server cookie, a panel
+ * for login and opening projects, and four agent tools (`overleaf_status`,
  * `overleaf_pull`, `overleaf_push`, `overleaf_compile`) that sync the directory
  * and compile on the server.
  *
@@ -16,7 +17,7 @@
  */
 
 import { homedir } from 'node:os';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadHostModules } from './lib/host-modules.js';
 import { CookieExpiredError, OverleafClient } from './lib/api.js';
@@ -139,24 +140,45 @@ class OverleafService extends host.cordis.Service {
     if (existing !== undefined && (existing.projectId !== projectId || existing.server !== server)) {
       throw new Error('这个本地目录已经是其他 Overleaf 项目的工作区。');
     }
-    if (existing === undefined) {
-      // First open seeds the directory with the project zip.
-      const client = this.createClient(server);
-      const entries = await client.downloadZip(projectId, { signal });
-      mkdirSync(dir, { recursive: true, mode: 0o755 });
-      const { files } = applyZip(dir, state, entries);
-      state.files = files;
-      state.pulledAt = new Date().toISOString();
-      writeStateOf(dir, state);
+    const firstOpen = existing === undefined;
+    if (firstOpen) mkdirSync(dir, { recursive: true, mode: 0o755 });
+    let liveStarted = false;
+    if (firstOpen) {
+      // Seed from the live project tree: join the docs and fetch binary
+      // fileRefs, instead of downloading and unzipping the whole project.
+      try {
+        const bootstrapped = await this.runtime.live.bootstrap(dir, state);
+        const { hydrated } = bootstrapped;
+        if (hydrated.failed.length > 0 || hydrated.failedDocs.length > 0 || hydrated.missingDocs > 0) {
+          throw new Error(`${hydrated.failed.length + hydrated.failedDocs.length + hydrated.missingDocs} 个文件未能完整拉取`);
+        }
+        liveStarted = true;
+      } catch (error) {
+        this.pluginCtx?.logger?.warn?.('overleaf: live bootstrap failed for %s (%s); falling back to zip',
+          dir, error?.message ?? error);
+        await this.runtime.live.stop(dir).catch(() => {});
+        // stop() persists a state file when it believes the tree was synced.
+        // Remove it before the fallback so a failed zip leaves no half-seeded
+        // workspace that a later open would mistake for complete.
+        rmSync(join(dir, '.overleaf', 'state.json'), { force: true });
+        const client = this.createClient(server);
+        const entries = await client.downloadZip(projectId, { signal });
+        const { files } = applyZip(dir, state, entries);
+        state.files = files;
+        state.pulledAt = new Date().toISOString();
+        writeStateOf(dir, state);
+      }
     }
     const workspace = await this.ensureWorkspace(dir);
     this.projects.put({ localDir: dir, server, projectId, projectName: state.projectName ?? projectName,
       openedAt: new Date().toISOString() });
     // Real-time sync starts with the project; a failure here must not block
     // opening the workspace (the snapshot pull/push tools stay available).
-    await this.runtime.live.start(dir).catch((error) => {
-      this.pluginCtx?.logger?.warn?.('overleaf: live sync did not start for %s: %s', dir, error?.message ?? error);
-    });
+    if (!liveStarted) {
+      await this.runtime.live.start(dir).catch((error) => {
+        this.pluginCtx?.logger?.warn?.('overleaf: live sync did not start for %s: %s', dir, error?.message ?? error);
+      });
+    }
     return { localDir: dir, workspaceId: workspace?.id };
   }
 
