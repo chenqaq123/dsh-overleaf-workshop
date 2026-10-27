@@ -2,6 +2,10 @@
 
 在 DeepSeek Harness 中直接编辑 Overleaf 项目，实时双向同步。
 
+![Overleaf 工作区：左侧是项目目录树，中间是 LaTeX 编辑器，右侧是对话栏](docs/overleaf-workshop.png)
+
+*界面示意（示例项目）：左侧 Overleaf 目录，中间带高亮与自动保存的编辑器，右侧直接和 Agent 对话。*
+
 ## 功能
 
 - **实时双向同步**：本地编辑、Agent 修改会自动推送到 Overleaf，网页端的协作修改也会同步回本地。支持文件新建、重命名、移动和删除，以及并发编辑时的三方合并。
