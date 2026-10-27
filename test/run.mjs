@@ -211,6 +211,24 @@ await test('mergeTexts applies remote patches onto local edits', () => {
   assert.equal(mergeTexts(base, ours, base).text, ours);
 });
 
+await test('mergeTexts without a base keeps the local text instead of throwing', () => {
+  // Regression: diff-match-patch threw "Unknown call format" for an undefined
+  // base, and that rejection escaped a flush timer and killed the host.
+  assert.deepEqual(mergeTexts(undefined, 'local', 'remote'), { text: 'local', conflict: true });
+  assert.deepEqual(mergeTexts('', undefined, 'remote'), { text: '', conflict: true });
+});
+
+await test('planWrite asks for a re-join when the merge base was lost', () => {
+  const model = new DocumentModel({ docId: 'lost', path: 'main.tex' });
+  model.join(['remote'], 2);
+  model.baseText = undefined;
+  const plan = model.planWrite('local');
+  assert.equal(plan.rejoin, true);
+  assert.equal(plan.send, false);
+  assert.equal(plan.text, 'local');
+  assert.equal(model.remoteText, 'remote', 'a missing base must not be treated as the remote text');
+});
+
 await test('decodeJoinLines reverses the latin1 packing', () => {
   const packed = Buffer.from('你好 world', 'utf8').toString('latin1');
   assert.equal(decodeJoinLines([packed, 'line2']), '你好 world\nline2');
@@ -456,6 +474,32 @@ await test('flush pushes a just-saved edit without stopping the session', async 
   await session.stop();
 });
 
+await test('a rejected push is reported and the next save recovers', async () => {
+  const dir = freshWorkspace('reject-push');
+  const session = openSession(dir);
+  await session.start();
+  await sleep(400);
+  const file = join(dir, 'main.tex');
+  mock.state.failPushPost = true;
+  writeFileSync(file, `REJECTED\n${readFileSync(file, 'utf8')}`);
+  const failed = await session.flushNow();
+  assert.ok(failed.pushError.includes('main.tex'), failed.pushError);
+  assert.ok(failed.pushErrorAt, 'the UI needs a timestamp to attribute the failure');
+
+  // Even if the recovery re-join never completed, the next flush must repair
+  // the base rather than throw out of the timer (the old host crash).
+  session.docs.get('doc1').baseText = undefined;
+  session.docs.get('doc1').needsRejoin = true;
+  mock.state.failPushPost = false;
+  writeFileSync(file, `RECOVERED\n${readFileSync(file, 'utf8')}`);
+  const recovered = await session.flushNow();
+  assert.equal(recovered.pushError, '');
+  assert.equal(recovered.lastPushPath, 'main.tex');
+  assert.ok(mock.state.docs.get('doc1').text.startsWith('RECOVERED\nREJECTED\n'),
+    mock.state.docs.get('doc1').text.slice(0, 40));
+  await session.stop();
+});
+
 await test('a paused stop keeps the edit and reports it as pending', async () => {
   const dir = freshWorkspace('stop-paused');
   const session = openSession(dir);
@@ -489,6 +533,27 @@ await test('a lost acknowledgement re-joins instead of wedging the document', as
   await sleep(1200);
   assert.ok(mock.state.docs.get('doc1').text.startsWith('ECHO-OK\nECHO-LOST\n'),
     mock.state.docs.get('doc1').text.slice(0, 40));
+  await session.stop();
+});
+
+await test('a dead poll reconnects instead of staying "connected" without acks', async () => {
+  const dir = freshWorkspace('reconnect');
+  const session = openSession(dir);
+  await session.start();
+  await sleep(400);
+  const oldSocket = session.socket;
+  for (const [, state] of mock.state.sockets) state.queue.push('0::');
+  const deadline = Date.now() + 6000;
+  while (Date.now() < deadline && (session.phase !== 'connected' || session.socket === oldSocket)) {
+    await sleep(100);
+  }
+  assert.notEqual(session.socket, oldSocket, 'a fresh socket is created');
+  assert.equal(session.phase, 'connected');
+  const file = join(dir, 'main.tex');
+  writeFileSync(file, `RECONNECTED\n${readFileSync(file, 'utf8')}`);
+  const status = await session.flushNow();
+  assert.equal(status.pushError, '');
+  assert.ok(mock.state.docs.get('doc1').text.startsWith('RECONNECTED\n'), mock.state.docs.get('doc1').text.slice(0, 30));
   await session.stop();
 });
 

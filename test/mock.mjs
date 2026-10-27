@@ -35,6 +35,8 @@ export function createMock() {
     compileResult: 'success',
     /** Delay (ms) before an applyOtUpdate is acknowledged, to model a slow wire. */
     applyDelayMs: 0,
+    /** Refuse applyOtUpdate at the HTTP layer, like a lost push request. */
+    failPushPost: false,
     /** Drop the sender's op-less echo, to model an acknowledgement lost on the wire. */
     dropEcho: false,
     compileLog: '',
@@ -73,7 +75,7 @@ export function createMock() {
   const handleClientPacket = async (sid, packet) => {
     if (packet.startsWith('2::')) return;
     if (packet.startsWith('0::')) { state.sockets.delete(sid); return; }
-    const match = /^5:(\d+)\+::([\s\S]*)$/u.exec(packet);
+    const match = /^5:(\d+)\+?::([\s\S]*)$/u.exec(packet);
     if (match === null) return;
     const [, id, payload] = match;
     const { name, args } = JSON.parse(payload);
@@ -177,6 +179,10 @@ export function createMock() {
     if (pollPath !== null) {
       const sid = pollPath[1];
       if (request.method === 'POST') {
+        if (state.failPushPost && body.toString('utf8').includes('"name":"applyOtUpdate"')) {
+          response.writeHead(500, { 'content-type': 'text/plain' });
+          return response.end('push failed');
+        }
         if (state.sockets.has(sid)) await handleClientPacket(sid, body.toString('utf8'));
         response.writeHead(200, { 'content-type': 'text/plain' });
         return response.end('ok');

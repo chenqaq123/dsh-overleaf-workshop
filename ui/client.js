@@ -743,8 +743,13 @@ window.__ModuleLoader__.load({
       }, [api, sessionId, path, tab.visible]);
 
       const save = useCallback(async () => {
-        if (sessionId === undefined || path === undefined || busy !== '' || !live.current.dirty) return false;
+        // Starting or stopping live sync must not lock the local buffer: during
+        // a network outage that RPC can take a long time, and the user still
+        // needs to save work.
+        if (sessionId === undefined || path === undefined || busy === 'save' || busy === 'load'
+          || !live.current.dirty) return false;
         setBusy('save');
+        const startedAt = Date.now();
         try {
           const result = await api('writeFile', { ...where(), path,
             text: live.current.text, mtime_ms: live.current.mtimeMs });
@@ -753,6 +758,28 @@ window.__ModuleLoader__.load({
           setDirty(false);
           setNotice('已保存，正在推送到 Overleaf。');
           setError('');
+          // Push now instead of waiting for fs.watch's debounce, then report
+          // what actually happened. The old fixed notice stayed on screen even
+          // after the host had crashed, so it read as a permanent "pushing".
+          try {
+            const status = await api('live', { ...where(), action: 'flush' });
+            const pushedAt = status?.lastPushAt === undefined ? 0 : Date.parse(status.lastPushAt);
+            const failedAt = status?.pushErrorAt === undefined ? 0 : Date.parse(status.pushErrorAt);
+            if (status?.pushError && failedAt >= startedAt) {
+              setNotice('');
+              setError(`已保存到本地，但推送到 Overleaf 失败：${status.pushError}`);
+            } else if (status?.lastPushPath === path && pushedAt >= startedAt) {
+              setNotice('已保存并推送到 Overleaf。');
+            } else if (status?.phase !== 'connected' || status?.paused) {
+              setNotice('已保存到本地；实时同步未连接。');
+            } else if ((status?.pending ?? 0) === 0 && (status?.inFlight ?? 0) === 0) {
+              setNotice('已保存到本地（内容与 Overleaf 一致）。');
+            } else {
+              setNotice('已保存到本地，推送仍在进行…');
+            }
+          } catch {
+            setNotice('已保存到本地；实时同步不可用。');
+          }
           return true;
         } catch (e) { setError(errorText(e)); return false; }
         finally { setBusy(''); }
@@ -839,7 +866,7 @@ window.__ModuleLoader__.load({
           h('span', { className: 'dsh-ol-src-name' }, basenameOf(path)),
           dirty ? h('span', { className: 'dsh-ol-dirty' }, '●') : null,
           h('span', { className: 'dsh-ol-src-spacer' }),
-          h('button', { disabled: busy !== '' || !dirty, onClick: () => { void save(); } },
+          h('button', { disabled: busy === 'save' || busy === 'load' || !dirty, onClick: () => { void save(); } },
             busy === 'save' ? '保存中…' : '保存'),
           h('button', { className: 'primary', disabled: busy !== '', onClick: () => { void compileNow(); } },
             busy === 'compile' ? '编译中…' : '编译'),
@@ -995,13 +1022,34 @@ window.__ModuleLoader__.load({
       const save = useCallback(async () => {
         if (file === undefined || !dirty) return true;
         setBusy('save');
+        const startedAt = Date.now();
         try {
           const result = await api('writeFile', { local_path: workspace.localDir, path: file.path,
             text: bufferRef.current.text, mtime_ms: bufferRef.current.mtimeMs });
           bufferRef.current = { ...bufferRef.current, mtimeMs: result.mtimeMs };
           setFile({ ...file, text: bufferRef.current.text, mtimeMs: result.mtimeMs });
           setDirty(false);
-          setNotice('已保存，改动正在推送到 Overleaf。');
+          setNotice('已保存，正在推送到 Overleaf。');
+          setError('');
+          try {
+            const status = await api('live', { local_path: workspace.localDir, action: 'flush' });
+            const pushedAt = status?.lastPushAt === undefined ? 0 : Date.parse(status.lastPushAt);
+            const failedAt = status?.pushErrorAt === undefined ? 0 : Date.parse(status.pushErrorAt);
+            if (status?.pushError && failedAt >= startedAt) {
+              setNotice('');
+              setError(`已保存到本地，但推送到 Overleaf 失败：${status.pushError}`);
+            } else if (status?.lastPushPath === file.path && pushedAt >= startedAt) {
+              setNotice('已保存并推送到 Overleaf。');
+            } else if (status?.phase !== 'connected' || status?.paused) {
+              setNotice('已保存到本地；实时同步未连接。');
+            } else if ((status?.pending ?? 0) === 0 && (status?.inFlight ?? 0) === 0) {
+              setNotice('已保存到本地（内容与 Overleaf 一致）。');
+            } else {
+              setNotice('已保存到本地，推送仍在进行…');
+            }
+          } catch {
+            setNotice('已保存到本地；实时同步不可用。');
+          }
           return true;
         } catch (e) { setError(errorText(e)); return false; } finally { setBusy(''); }
       }, [api, workspace.localDir, file, dirty]);
@@ -1045,7 +1093,7 @@ window.__ModuleLoader__.load({
         h('span', { className: 'dsh-ol-code-name' }, file?.path ?? '未选择文件'),
         h('span', { className: 'dsh-ol-actions' },
           dirty ? h('span', { className: 'dsh-ol-dirty' }, '未保存') : null,
-          h('button', { disabled: !dirty || busy !== '', onClick: () => { void save(); } },
+          h('button', { disabled: !dirty || busy === 'save', onClick: () => { void save(); } },
             busy === 'save' ? '保存中…' : '保存 (⌘S)'),
           h('button', { className: 'dsh-ol-primary', disabled: busy !== '', onClick: () => { void compileNow(); } },
             busy === 'compile' ? '编译中…' : '编译')));
