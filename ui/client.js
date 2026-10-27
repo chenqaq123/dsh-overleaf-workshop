@@ -690,6 +690,10 @@ window.__ModuleLoader__.load({
       const [syncEnded, setSyncEnded] = useState(false);
       /** {path, startedAt}: a save whose push is still settling, polled below. */
       const [pushWatch, setPushWatch] = useState(undefined);
+      /** Bumped on every buffer change, so the autosave timer restarts. */
+      const [editRevision, setEditRevision] = useState(0);
+      const [saving, setSaving] = useState(false);
+      const savingRef = useRef(false);
       const editorRef = useRef(undefined);
       // Where the last navigation asked to land; read when the initial load
       // resolves, so re-clicking an open tab never re-reads (and never drops an
@@ -796,29 +800,46 @@ window.__ModuleLoader__.load({
                 : { ...previous, text: nextText, mtimeMs: result.mtimeMs }));
             }
             setDirty(nextText !== result.text);
+            if (nextText !== result.text) setEditRevision((value) => value + 1);
             setNotice(merged.conflict ? '远端改动有冲突，已保留本地文本。' : '已合并远端改动。');
           } catch { /* the file may be mid-write; try again on the next tick */ }
         }, 1500);
         return () => clearInterval(timer);
       }, [api, sessionId, path, tab.visible]);
 
-      const save = useCallback(async () => {
+      const save = useCallback(async ({ auto = false } = {}) => {
         // Starting or stopping live sync must not lock the local buffer: during
         // a network outage that RPC can take a long time, and the user still
         // needs to save work.
         if (sessionId === undefined || path === undefined || busy === 'save' || busy === 'load'
           || !live.current.dirty) return false;
-        setBusy('save');
+        // A manual save or compile during an autosave waits for it, then saves
+        // whatever was typed meanwhile.
+        while (savingRef.current) await new Promise((resolveWait) => setTimeout(resolveWait, 50));
+        if (!live.current.dirty) return true;
+        savingRef.current = true;
+        setSaving(true);
+        if (!auto) setBusy('save');
         const startedAt = Date.now();
+        const savedText = live.current.text;
+        const savedBase = live.current.baseText;
         try {
           const result = await api('writeFile', { ...where(), path,
-            text: live.current.text, base_text: live.current.baseText,
-            mtime_ms: live.current.mtimeMs });
-          live.current = { text: result.text, baseText: result.text,
-            mtimeMs: result.mtimeMs, dirty: false };
-          setFile((previous) => (previous === undefined ? previous
-            : { ...previous, text: result.text, mtimeMs: result.mtimeMs }));
-          setDirty(false);
+            text: savedText, base_text: savedBase, mtime_ms: live.current.mtimeMs });
+          const latest = live.current;
+          if (latest.text === savedText) {
+            live.current = { text: result.text, baseText: result.text,
+              mtimeMs: result.mtimeMs, dirty: false };
+            setFile((previous) => (previous === undefined ? previous
+              : { ...previous, text: result.text, mtimeMs: result.mtimeMs }));
+            setDirty(false);
+          } else {
+            // Keystrokes arrived while the save was on the wire. Keep them and
+            // let the merge poll apply base(savedText) -> disk(result.text).
+            live.current = { ...latest, baseText: savedText,
+              mtimeMs: result.mtimeMs, dirty: true };
+            setDirty(true);
+          }
           setNotice(result.merged
             ? '已合并远端改动并保存，正在推送到 Overleaf。'
             : '已保存，正在推送到 Overleaf。');
@@ -847,7 +868,11 @@ window.__ModuleLoader__.load({
           }
           return true;
         } catch (e) { setError(errorText(e)); return false; }
-        finally { setBusy(''); }
+        finally {
+          savingRef.current = false;
+          setSaving(false);
+          if (!auto) setBusy('');
+        }
       }, [api, sessionId, path, busy]);
 
       // A flush can return while the echo or a reconnect is still in flight.
@@ -883,6 +908,15 @@ window.__ModuleLoader__.load({
         timer = setTimeout(poll, 400);
         return () => { cancelled = true; clearTimeout(timer); };
       }, [pushWatch, api, sessionId, path, localPath]);
+
+      // Autosave: after a short pause, write the buffer and push it. Ctrl+S
+      // still works, but is no longer required.
+      useEffect(() => {
+        if (!dirty || sessionId === undefined || path === undefined) return undefined;
+        if (saving || busy === 'save' || busy === 'load') return undefined;
+        const timer = setTimeout(() => { void save({ auto: true }); }, 900);
+        return () => clearTimeout(timer);
+      }, [editRevision, dirty, saving, busy, save, sessionId, path]);
 
       const compileNow = async () => {
         if (sessionId === undefined) return;
@@ -965,7 +999,8 @@ window.__ModuleLoader__.load({
           h('span', { className: 'dsh-ol-src-name' }, basenameOf(path)),
           dirty ? h('span', { className: 'dsh-ol-dirty' }, '●') : null,
           h('span', { className: 'dsh-ol-src-spacer' }),
-          h('button', { disabled: busy === 'save' || busy === 'load' || !dirty, onClick: () => { void save(); } },
+          h('button', { disabled: busy === 'save' || busy === 'load' || saving || !dirty,
+            onClick: () => { void save(); } },
             busy === 'save' ? '保存中…' : '保存'),
           h('button', { className: 'primary', disabled: busy !== '', onClick: () => { void compileNow(); } },
             busy === 'compile' ? '编译中…' : '编译'),
@@ -986,6 +1021,7 @@ window.__ModuleLoader__.load({
           onChange: (text) => {
             live.current = { ...live.current, text, dirty: true };
             lastEditAt.current = Date.now();
+            setEditRevision((value) => value + 1);
             setFile((previous) => (previous === undefined ? previous : { ...previous, text }));
             setDirty(true);
             setNotice('');
