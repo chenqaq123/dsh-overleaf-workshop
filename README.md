@@ -71,12 +71,10 @@ macOS 桌面版如果没有把 `dsh` 加进 PATH，直接用应用内自带的 C
 
 ### 从 Release tarball 安装（市场 / 离线）
 
-每个版本都会在 GitHub Release 附带打包好的 tarball，市场一键安装会优先使用它。手动安装：
+每个版本都会在 GitHub Release 附带打包好的 tarball，市场一键安装会优先使用它。可以直接安装这个 tarball：
 
 ```sh
-curl -L -o /tmp/dsh-overleaf-workshop-0.3.0.tgz \
-  https://github.com/chenqaq123/dsh-overleaf-workshop/releases/download/v0.3.0/dsh-overleaf-workshop-0.3.0.tgz && \
-  dsh plugin --profile desktop add file:/tmp/dsh-overleaf-workshop-0.3.0.tgz
+dsh plugin --profile desktop add https://github.com/chenqaq123/dsh-overleaf-workshop/releases/download/v0.3.0/dsh-overleaf-workshop-0.3.0.tgz
 ```
 
 ### 从源码安装（打包方式）
