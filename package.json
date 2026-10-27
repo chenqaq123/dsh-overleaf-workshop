@@ -1,0 +1,67 @@
+{
+  "name": "dsh-overleaf",
+  "version": "0.1.0",
+  "description": "Open Overleaf projects as local DSH workspaces: pull, push, compile with error reporting, and PDF preview.",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test/run.mjs"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json",
+    "./client": "./ui/client.js"
+  },
+  "files": [
+    "index.js",
+    "lib",
+    "ui",
+    "scripts/profile.mjs",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-workspace"
+      ]
+    }
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chenqaq123/dsh-overleaf-workshop.git"
+  },
+  "homepage": "https://github.com/chenqaq123/dsh-overleaf-workshop#readme",
+  "bugs": {
+    "type": "url",
+    "url": "https://github.com/chenqaq123/dsh-overleaf-workshop/issues"
+  },
+  "keywords": [
+    "deepseek",
+    "harness",
+    "overleaf",
+    "latex"
+  ],
+  "bin": {
+    "dsh-overleaf": "scripts/profile.mjs"
+  },
+  "dependencies": {
+    "diff-match-patch": "^1.0.5",
+    "fflate": "^0.8.2"
+  }
+}
