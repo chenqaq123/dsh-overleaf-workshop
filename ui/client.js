@@ -985,7 +985,6 @@ window.__ModuleLoader__.load({
       return h('div', { className: 'dsh-ol-src' }, h('style', null, SOURCE_CSS + EDITOR_CSS),
         h('div', { className: 'dsh-ol-src-bar' },
           h('span', { className: 'dsh-ol-src-name' }, basenameOf(path)),
-          dirty ? h('span', { className: 'dsh-ol-dirty' }, '●') : null,
           h('span', { className: 'dsh-ol-src-spacer' }),
           h('button', { disabled: busy === 'save' || busy === 'load' || saving || !dirty,
             onClick: () => { void save(); } },

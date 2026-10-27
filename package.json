@@ -1,6 +1,6 @@
 {
   "name": "dsh-overleaf-workshop",
-  "version": "0.4.7",
+  "version": "0.4.8",
   "description": "Overleaf Workshop for DeepSeek Harness: three-column workspace, live sync, server compile and PDF preview.",
   "type": "module",
   "main": "index.js",
