@@ -4,7 +4,7 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require('react');
     const h = React.createElement;
-    const { useState, useEffect, useCallback, useRef } = React;
+    const { useState, useEffect, useCallback, useRef, useLayoutEffect, useImperativeHandle, forwardRef } = React;
     const PANEL = 'overleaf';
     const POLL_MS = 1500;
 
@@ -77,6 +77,58 @@ window.__ModuleLoader__.load({
       .dsh-ol-flipped>[class*="rightbarCol"] [data-sidebar-right-panel][data-sidebar-right-open="true"]{width:100%!important;--dsh-sidebar-width:100%!important}
       .dsh-ol-flipped>[class*="handle"][data-side="rightbar"]{display:none!important}
       .dsh-ol-flip-handle{display:none;position:absolute;top:0;bottom:0;width:8px;margin-left:-4px;cursor:col-resize;touch-action:none;z-index:12}
+    `;
+
+    /**
+     * CodeMirror shell shared by the sidebar source tab and the panel editor.
+     * DSH's theme exposes the user's "code font" as a family and a size on body;
+     * the editor must track those variables instead of hardcoding a font.
+     */
+    const EDITOR_CSS = `
+      .dsh-ol-cm-wrap{display:flex;flex:1;min-width:0;min-height:0;position:relative}
+      .dsh-ol-cm{flex:1;min-width:0;min-height:0;overflow:hidden}
+      .dsh-ol-cm .CodeMirror{height:100%;background:transparent;color:var(--dsw-alias-label-primary,CanvasText);font-family:var(--ds-font-family-code,ui-monospace,SFMono-Regular,monospace);font-size:var(--dsh-code-font-size,12px);line-height:calc(19px + var(--dsh-code-font-delta,0px))}
+      .dsh-ol-cm .CodeMirror pre.CodeMirror-line,.dsh-ol-cm .CodeMirror pre.CodeMirror-line-like{font-family:inherit;font-size:inherit;line-height:inherit}
+      .dsh-ol-cm .CodeMirror-gutters{background:transparent;border-right:1px solid color-mix(in srgb,currentColor 9%,transparent)}
+      .dsh-ol-cm .CodeMirror-linenumber{color:color-mix(in srgb,currentColor 38%,transparent);padding:0 8px 0 4px}
+      .dsh-ol-cm .CodeMirror-cursor{border-left-color:currentColor}
+      .dsh-ol-cm .CodeMirror-selected,.dsh-ol-cm .CodeMirror-focused .CodeMirror-selected{background:color-mix(in srgb,#5684ec 24%,transparent)}
+      .dsh-ol-cm .CodeMirror-activeline-background{background:color-mix(in srgb,currentColor 5%,transparent)}
+      .dsh-ol-cm .CodeMirror-matchingbracket{color:#5684ec!important;text-decoration:none;border-bottom:1px solid #5684ec}
+      .dsh-ol-cm .CodeMirror-dialog{background:Canvas;color:CanvasText;border-color:color-mix(in srgb,currentColor 14%,transparent);font-family:var(--ds-font-family-code,ui-monospace,SFMono-Regular,monospace);font-size:var(--dsh-code-font-size,12px)}
+      .dsh-ol-cm .CodeMirror-dialog input{background:transparent;color:inherit;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:4px;outline:none;padding:2px 5px}
+      .dsh-ol-cm .cm-keyword,.dsh-ol-cm .cm-command{color:#8b3fc7}
+      .dsh-ol-cm .cm-atom,.dsh-ol-cm .cm-number{color:#b45309}
+      .dsh-ol-cm .cm-def,.dsh-ol-cm .cm-variable-2{color:#1d4ed8}
+      .dsh-ol-cm .cm-string{color:#0f766e}
+      .dsh-ol-cm .cm-comment{color:#6b7280;font-style:italic}
+      .dsh-ol-cm .cm-tag,.dsh-ol-cm .cm-attribute,.dsh-ol-cm .cm-bracket{color:#4b5563}
+      .dsh-ol-cm .cm-searching{background:#f0c36d55}
+      body[data-ds-dark-theme] .dsh-ol-cm .cm-keyword,body[data-ds-dark-theme] .dsh-ol-cm .cm-command{color:#c792ea}
+      body[data-ds-dark-theme] .dsh-ol-cm .cm-atom,body[data-ds-dark-theme] .dsh-ol-cm .cm-number{color:#f0b35b}
+      body[data-ds-dark-theme] .dsh-ol-cm .cm-def,body[data-ds-dark-theme] .dsh-ol-cm .cm-variable-2{color:#82aaff}
+      body[data-ds-dark-theme] .dsh-ol-cm .cm-string{color:#7fd6b0}
+      body[data-ds-dark-theme] .dsh-ol-cm .cm-comment{color:#8a8f98}
+      body[data-ds-dark-theme] .dsh-ol-cm .cm-tag,body[data-ds-dark-theme] .dsh-ol-cm .cm-attribute,body[data-ds-dark-theme] .dsh-ol-cm .cm-bracket{color:#b6bcc6}
+      .dsh-ol-cm-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;opacity:.5;pointer-events:none}
+      .dsh-ol-cm-fallback{flex:1;min-height:0;width:100%;box-sizing:border-box;border:0;outline:none;resize:none;background:transparent;color:inherit;font-family:var(--ds-font-family-code,ui-monospace,SFMono-Regular,monospace);font-size:var(--dsh-code-font-size,12px);line-height:calc(19px + var(--dsh-code-font-delta,0px));padding:6px 12px 14px;tab-size:2;white-space:pre;overflow:auto}
+      .dsh-ol-cm-panel{min-height:480px;height:60vh;display:flex}
+      .dsh-ol-fa{display:flex;align-items:center;gap:3px;flex:none}
+      .dsh-ol-fa>button{font:inherit;font-size:10.5px;line-height:1;cursor:pointer;border-radius:5px;padding:4px 5px;min-height:22px;border:1px solid color-mix(in srgb,currentColor 14%,transparent);color:inherit;background:transparent;white-space:nowrap}
+      .dsh-ol-fa>button:hover{background:color-mix(in srgb,currentColor 7%,transparent)}
+      .dsh-ol-fa-dialog{width:380px;max-width:calc(100vw - 32px);box-sizing:border-box;border:1px solid var(--dsw-alias-border-l3,color-mix(in srgb,currentColor 16%,transparent));border-radius:12px;padding:18px;background:Canvas;color:CanvasText;font:inherit;box-shadow:0 18px 50px #0004}
+      .dsh-ol-fa-dialog::backdrop{background:#0006;backdrop-filter:blur(2px)}
+      .dsh-ol-fa-dialog form{display:flex;flex-direction:column;gap:10px}
+      .dsh-ol-fa-title{font-size:14px;font-weight:650}
+      .dsh-ol-fa-sub{font-family:var(--ds-font-family-code,ui-monospace,SFMono-Regular,monospace);font-size:10.5px;opacity:.5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .dsh-ol-fa-dialog input{width:100%;box-sizing:border-box;height:36px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:7px;background:transparent;color:inherit;padding:0 10px;font-family:var(--ds-font-family-code,ui-monospace,SFMono-Regular,monospace);font-size:12px;outline:none}
+      .dsh-ol-fa-dialog input:focus{border-color:#5684ec;box-shadow:0 0 0 3px #5684ec22}
+      .dsh-ol-fa-error{color:#c34c4c;font-size:11.5px;line-height:1.5;overflow-wrap:anywhere}
+      .dsh-ol-fa-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:2px}
+      .dsh-ol-fa-actions button{font:inherit;font-size:12px;cursor:pointer;border-radius:7px;min-height:30px;padding:5px 12px;border:1px solid color-mix(in srgb,currentColor 15%,transparent);color:inherit;background:transparent}
+      .dsh-ol-fa-actions button:hover:not(:disabled){background:color-mix(in srgb,currentColor 7%,transparent)}
+      .dsh-ol-fa-actions button:disabled{opacity:.5;cursor:default}
+      .dsh-ol-fa-actions button.primary{color:#fff;background:#138a59;border-color:#138a59}
     `;
 
     /** The sidebar region: same DOM-section technique as dsh-remote-ssh. */
@@ -268,14 +320,313 @@ window.__ModuleLoader__.load({
       }
     }
 
-    /** Select one 1-based line in the editor and bring it into view. */
-    function selectLine(node, text, line) {
-      if (node === null || node === undefined || typeof line !== 'number' || line <= 0) return;
-      const lines = text.split('\n');
-      const offset = lines.slice(0, Math.min(line - 1, lines.length)).join('\n').length;
-      node.focus();
-      node.setSelectionRange(offset, offset + (lines[line - 1]?.length ?? 0));
-      node.scrollTop = Math.max(0, (line - 3) * 19);
+    /* ------------------------------- Code editor ------------------------------- */
+
+    let editorPromise;
+    /** Load the vendored CodeMirror chunk once per page. */
+    function loadEditor() {
+      if (editorPromise !== undefined) return editorPromise;
+      if (typeof require?.async !== 'function') {
+        return Promise.reject(new Error('module loader has no require.async'));
+      }
+      editorPromise = Promise.resolve()
+        .then(() => require.async('./client.editor.js'))
+        .catch((error) => { editorPromise = undefined; throw error; });
+      return editorPromise;
+    }
+
+    /**
+     * CodeMirror-backed source editor. The chunk is lazy so a Session that never
+     * opens a source file does not pay for it. If the chunk cannot load, a
+     * textarea with the same DSH code-font rules keeps editing usable.
+     */
+    const CodeEditor = forwardRef(function CodeEditor({ value, readOnly, onChange, onSave, className }, ref) {
+      const hostRef = useRef(undefined);
+      const fallbackRef = useRef(undefined);
+      const handleRef = useRef(undefined);
+      const pendingLine = useRef(undefined);
+      const callbacksRef = useRef({ onChange, onSave });
+      const valueRef = useRef(value ?? '');
+      callbacksRef.current = { onChange, onSave };
+      valueRef.current = value ?? '';
+      const [phase, setPhase] = useState('loading');
+
+      useLayoutEffect(() => {
+        let cancelled = false;
+        let local;
+        loadEditor().then((module) => {
+          if (cancelled || hostRef.current === null || hostRef.current === undefined) return;
+          local = module.create(hostRef.current, {
+            value: valueRef.current,
+            readOnly: readOnly === true,
+            onChange: (text) => callbacksRef.current.onChange?.(text),
+            onSave: () => callbacksRef.current.onSave?.(),
+          });
+          handleRef.current = local;
+          setPhase('ready');
+        }).catch((error) => {
+          if (!cancelled) {
+            console.warn('[dsh-overleaf-workshop] CodeMirror failed to load; using textarea', error);
+            setPhase('fallback');
+          }
+        });
+        return () => {
+          cancelled = true;
+          local?.destroy();
+          if (handleRef.current === local) handleRef.current = undefined;
+        };
+        // The editor is created once for the lifetime of this tab body.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, []);
+
+      useLayoutEffect(() => {
+        if (phase !== 'ready') return;
+        handleRef.current?.setValue(value ?? '');
+      }, [phase, value]);
+
+      useLayoutEffect(() => {
+        if (phase !== 'ready') return;
+        handleRef.current?.setReadOnly(readOnly === true);
+      }, [phase, readOnly]);
+
+      useLayoutEffect(() => {
+        if (phase !== 'ready' || pendingLine.current === undefined) return;
+        const line = pendingLine.current;
+        pendingLine.current = undefined;
+        handleRef.current?.revealLine(line);
+      }, [phase]);
+
+      useEffect(() => {
+        if (phase !== 'ready') return undefined;
+        let frame;
+        const refresh = () => {
+          cancelAnimationFrame(frame);
+          frame = requestAnimationFrame(() => handleRef.current?.refresh());
+        };
+        const observer = new MutationObserver(refresh);
+        observer.observe(document.body, { attributes: true, attributeFilter: ['class', 'style', 'data-ds-dark-theme'] });
+        const resize = typeof ResizeObserver === 'function' && hostRef.current !== undefined
+          ? new ResizeObserver(refresh) : undefined;
+        resize?.observe(hostRef.current);
+        window.addEventListener('resize', refresh);
+        if (document.fonts?.ready !== undefined) document.fonts.ready.then(refresh).catch(() => {});
+        document.fonts?.addEventListener?.('loadingdone', refresh);
+        return () => {
+          cancelAnimationFrame(frame);
+          observer.disconnect();
+          resize?.disconnect();
+          window.removeEventListener('resize', refresh);
+          document.fonts?.removeEventListener?.('loadingdone', refresh);
+        };
+      }, [phase]);
+
+      const revealFallback = (line) => {
+        const node = fallbackRef.current;
+        if (node === null || node === undefined) return;
+        const height = parseFloat(getComputedStyle(node).lineHeight) || 19;
+        const lines = node.value.split('\n');
+        const offset = lines.slice(0, Math.max(0, line - 1)).join('\n').length;
+        node.focus();
+        node.setSelectionRange(offset, offset + (lines[line - 1]?.length ?? 0));
+        node.scrollTop = Math.max(0, (line - 3) * height);
+      };
+
+      useImperativeHandle(ref, () => ({
+        revealLine(line) {
+          if (handleRef.current !== undefined) handleRef.current.revealLine(line);
+          else if (phase === 'fallback') revealFallback(line);
+          else pendingLine.current = line;
+        },
+        focus() {
+          if (handleRef.current !== undefined) handleRef.current.focus();
+          else fallbackRef.current?.focus();
+        },
+        hasFocus() {
+          if (handleRef.current !== undefined) return handleRef.current.hasFocus();
+          return document.activeElement === fallbackRef.current;
+        },
+        refresh() { handleRef.current?.refresh(); },
+      }), [phase]);
+
+      useLayoutEffect(() => {
+        if (phase !== 'fallback' || pendingLine.current === undefined) return;
+        const line = pendingLine.current;
+        pendingLine.current = undefined;
+        revealFallback(line);
+      }, [phase]);
+
+      const fallback = phase === 'fallback';
+      const onFallbackKeyDown = (event) => {
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+          event.preventDefault();
+          callbacksRef.current.onSave?.();
+        }
+      };
+
+      return h('div', { className: `dsh-ol-cm-wrap${className === undefined ? '' : ` ${className}`}` },
+        fallback
+          ? h('textarea', {
+            ref: fallbackRef,
+            className: 'dsh-ol-cm-fallback',
+            value: value ?? '',
+            readOnly: readOnly === true,
+            spellCheck: false,
+            onKeyDown: onFallbackKeyDown,
+            onChange: (event) => callbacksRef.current.onChange?.(event.target.value),
+          })
+          : h('div', { ref: hostRef, className: 'dsh-ol-cm' }),
+        phase === 'loading' ? h('div', { className: 'dsh-ol-cm-loading' }, '正在加载编辑器…') : null);
+    });
+
+    /**
+     * New file / new folder controls in the built-in Files tab header.
+     *
+     * The header slot is the supported extension point; it receives the tree
+     * root. The controls stay hidden outside Overleaf workspaces and on hosts
+     * that do not expose the creation RPCs.
+     */
+    function FilesActions({ absolutePath, api, openInEditor }) {
+      const [bound, setBound] = useState(undefined);
+      const [kind, setKind] = useState(undefined);
+      const [error, setError] = useState('');
+      const [busy, setBusy] = useState(false);
+      const wrapperRef = useRef(undefined);
+      const dialogRef = useRef(undefined);
+      const inputRef = useRef(undefined);
+      const formRef = useRef(undefined);
+      const busyRef = useRef(false);
+
+      useEffect(() => {
+        let cancelled = false;
+        setBound(undefined);
+        if (typeof absolutePath !== 'string' || absolutePath.length === 0) { setBound(false); return undefined; }
+        if (Object.values(sessionDirs()).includes(absolutePath)) setBound(true);
+        api('bound', { local_path: absolutePath })
+          .then((result) => { if (!cancelled) setBound(result?.bound === true); })
+          .catch(() => { if (!cancelled) setBound(false); });
+        return () => { cancelled = true; };
+      }, [api, absolutePath]);
+
+      const close = () => {
+        busyRef.current = false;
+        setKind(undefined);
+        setError('');
+        setBusy(false);
+        if (dialogRef.current?.open === true) dialogRef.current.close();
+      };
+
+      const open = (nextKind) => {
+        setKind(nextKind);
+        setError('');
+        if (inputRef.current !== undefined) inputRef.current.value = '';
+        requestAnimationFrame(() => {
+          if (dialogRef.current?.open !== true) dialogRef.current?.showModal();
+          inputRef.current?.focus();
+        });
+      };
+
+      const reloadTree = () => {
+        setTimeout(() => {
+          const pane = wrapperRef.current?.closest('[data-dockkit-pane]');
+          pane?.querySelector('button[data-files-reload]')?.click();
+        }, 80);
+      };
+
+      const submit = async () => {
+        if (busyRef.current || kind === undefined) return;
+        let path = String(inputRef.current?.value ?? '').trim().replace(/\\/g, '/').replace(/^(?:\.\/)+/u, '');
+        if (kind === 'folder') path = path.replace(/\/+$/u, '');
+        if (path.length === 0 || path.startsWith('/') || /^[A-Za-z]:\//u.test(path)
+          || path.includes('\0') || path.split('/').some((part) => part === '' || part === '.' || part === '..')
+          || path === '.overleaf' || path.startsWith('.overleaf/')) {
+          setError('请输入工作区内的相对路径，例如 sections/intro.tex。');
+          return;
+        }
+        busyRef.current = true;
+        setBusy(true);
+        setError('');
+        try {
+          const result = await api(kind === 'file' ? 'createFile' : 'createFolder',
+            { local_path: absolutePath, path });
+          const created = result?.path ?? path;
+          close();
+          reloadTree();
+          if (kind === 'file') openInEditor?.(absolutePath, created);
+        } catch (e) {
+          setError(errorText(e));
+        } finally {
+          busyRef.current = false;
+          setBusy(false);
+        }
+      };
+
+      // The Files-tab header stops native click propagation before React's
+      // delegated root sees it, so the buttons and dialog are wired with
+      // native listeners on the slot wrapper instead of React onClick.
+      useEffect(() => {
+        const wrapper = wrapperRef.current;
+        const dialog = dialogRef.current;
+        const form = formRef.current;
+        if (wrapper === null || wrapper === undefined) return undefined;
+        const onAction = (event) => {
+          const action = event.target instanceof Element
+            ? event.target.closest('[data-ol-action]')?.getAttribute('data-ol-action')
+            : undefined;
+          if (typeof action !== 'string') return;
+          event.preventDefault();
+          event.stopPropagation();
+          if (action === 'file') open('file');
+          else if (action === 'folder') open('folder');
+          else if (action === 'cancel') close();
+          else if (action === 'create') void submit();
+        };
+        const onSubmit = (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          void submit();
+        };
+        const onCancel = (event) => { event.preventDefault(); close(); };
+        const onMouseDown = (event) => { if (event.target === dialog) close(); };
+        const onInput = () => setError('');
+        wrapper.addEventListener('click', onAction);
+        form?.addEventListener('submit', onSubmit);
+        dialog?.addEventListener('cancel', onCancel);
+        dialog?.addEventListener('mousedown', onMouseDown);
+        inputRef.current?.addEventListener('input', onInput);
+        return () => {
+          wrapper.removeEventListener('click', onAction);
+          form?.removeEventListener('submit', onSubmit);
+          dialog?.removeEventListener('cancel', onCancel);
+          dialog?.removeEventListener('mousedown', onMouseDown);
+          inputRef.current?.removeEventListener('input', onInput);
+        };
+      }, [api, absolutePath, bound, kind, openInEditor]);
+
+      if (bound !== true) return null;
+
+      return h('div', {
+        ref: wrapperRef,
+        className: 'dsh-ol-fa',
+      },
+      h('button', { type: 'button', 'data-ol-action': 'file', title: '新建文件', 'aria-label': '新建文件' }, '＋文件'),
+      h('button', { type: 'button', 'data-ol-action': 'folder', title: '新建文件夹', 'aria-label': '新建文件夹' }, '＋目录'),
+      h('dialog', {
+        ref: dialogRef,
+        className: 'dsh-ol-fa-dialog',
+      },
+      h('form', { ref: formRef, method: 'dialog' },
+        h('div', { className: 'dsh-ol-fa-title' }, kind === 'folder' ? '新建文件夹' : '新建文件'),
+        h('div', { className: 'dsh-ol-fa-sub' }, absolutePath),
+        h('input', {
+          ref: inputRef,
+          spellCheck: false,
+          placeholder: kind === 'folder' ? '例如 sections' : '例如 sections/intro.tex',
+        }),
+        error !== '' ? h('div', { className: 'dsh-ol-fa-error' }, error) : null,
+        h('div', { className: 'dsh-ol-fa-actions' },
+          h('button', { type: 'button', 'data-ol-action': 'cancel' }, '取消'),
+          h('button', { type: 'button', 'data-ol-action': 'create', className: 'primary', disabled: busy },
+            busy ? '创建中…' : '创建')))));
     }
 
     /**
@@ -304,7 +655,7 @@ window.__ModuleLoader__.load({
       const [compile, setCompile] = useState(undefined);
       const [hasPdf, setHasPdf] = useState(false);
       const [syncEnded, setSyncEnded] = useState(false);
-      const areaRef = useRef(undefined);
+      const editorRef = useRef(undefined);
       // Where the last navigation asked to land; read when the initial load
       // resolves, so re-clicking an open tab never re-reads (and never drops an
       // unsaved buffer) just to jump to a line.
@@ -318,7 +669,7 @@ window.__ModuleLoader__.load({
         setFile({ path, text: result.text, mtimeMs: result.mtimeMs });
         setDirty(false);
         const line = lineRef.current;
-        if (typeof line === 'number') requestAnimationFrame(() => selectLine(areaRef.current, result.text, line));
+        if (typeof line === 'number') requestAnimationFrame(() => editorRef.current?.revealLine(line));
       }, [path]);
 
       useEffect(() => { lineRef.current = tab.navigation?.params?.line; });
@@ -340,7 +691,7 @@ window.__ModuleLoader__.load({
       useEffect(() => {
         const line = tab.navigation?.params?.line;
         if (typeof line === 'number' && live.current.text !== '') {
-          selectLine(areaRef.current, live.current.text, line);
+          editorRef.current?.revealLine(line);
         }
       }, [tab.navigation?.revision]);
 
@@ -370,9 +721,8 @@ window.__ModuleLoader__.load({
       useEffect(() => {
         if (sessionId === undefined || path === undefined || tab.visible === false) return undefined;
         const timer = setInterval(async () => {
-          const area = areaRef.current;
           if (live.current.dirty) return;
-          if (area !== null && area !== undefined && document.activeElement === area) return;
+          if (editorRef.current?.hasFocus?.() === true) return;
           try {
             const result = await api('readFile', { ...where(), path });
             if (result.text === live.current.text) return;
@@ -455,21 +805,14 @@ window.__ModuleLoader__.load({
         finally { setBusy(''); }
       };
 
-      const onKeyDown = (event) => {
-        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
-          event.preventDefault();
-          void save();
-        }
-      };
-
       if (target === undefined) {
-        return h('div', { className: 'dsh-ol-src' }, h('style', null, SOURCE_CSS),
+        return h('div', { className: 'dsh-ol-src' }, h('style', null, SOURCE_CSS + EDITOR_CSS),
           h('div', { className: 'dsh-ol-src-empty' }, '无法解析这个文件地址。请从工作区的文件树重新打开。'));
       }
 
       const jump = (item) => {
         if (typeof item.line === 'number' && (item.file === null || item.file === undefined || item.file === path)) {
-          selectLine(areaRef.current, live.current.text, item.line);
+          editorRef.current?.revealLine(item.line);
           return;
         }
         if (item.file !== null && item.file !== undefined) {
@@ -483,7 +826,7 @@ window.__ModuleLoader__.load({
       const errors = compile === undefined ? [] : compile.errors.slice(0, 12);
       const statusLine = dirty ? '未保存' : busy === 'load' ? '读取中…' : '已保存';
 
-      return h('div', { className: 'dsh-ol-src' }, h('style', null, SOURCE_CSS),
+      return h('div', { className: 'dsh-ol-src' }, h('style', null, SOURCE_CSS + EDITOR_CSS),
         h('div', { className: 'dsh-ol-src-bar' },
           h('span', { className: 'dsh-ol-src-name' }, basenameOf(path)),
           dirty ? h('span', { className: 'dsh-ol-dirty' }, '●') : null,
@@ -501,17 +844,14 @@ window.__ModuleLoader__.load({
         h('div', { className: 'dsh-ol-src-path' }, `${path} · ${statusLine}`),
         error !== '' ? h('div', { className: 'dsh-ol-src-note error' }, error) : null,
         notice !== '' && error === '' ? h('div', { className: 'dsh-ol-src-note ok' }, notice) : null,
-        h('textarea', {
-          ref: areaRef,
-          className: 'dsh-ol-src-code',
+        h(CodeEditor, {
+          ref: editorRef,
           value: file?.text ?? '',
-          disabled: file === undefined,
-          spellCheck: false,
-          autoComplete: 'off',
-          onKeyDown,
-          onChange: (event) => {
-            live.current = { ...live.current, text: event.target.value, dirty: true };
-            setFile((previous) => ({ ...previous, text: event.target.value }));
+          readOnly: file === undefined,
+          onSave: () => { void save(); },
+          onChange: (text) => {
+            live.current = { ...live.current, text, dirty: true };
+            setFile((previous) => (previous === undefined ? previous : { ...previous, text }));
             setDirty(true);
             setNotice('');
           },
@@ -594,7 +934,7 @@ window.__ModuleLoader__.load({
         status.error ? h('span', { className: 'dsh-ol-dirty' }, status.error) : null);
     }
 
-    /** File tree + textarea editor + compile results for one workspace. */
+    /** File tree + source editor + compile results for one workspace. */
     function WorkspaceEditor({ workspace, api, openPdf, onClose }) {
       const [entries, setEntries] = useState([]);
       const [file, setFile] = useState(undefined);
@@ -604,7 +944,8 @@ window.__ModuleLoader__.load({
       const [error, setError] = useState('');
       const [notice, setNotice] = useState('');
       const [compile, setCompile] = useState(undefined);
-      const codeRef = useRef(undefined);
+      const editorRef = useRef(undefined);
+      const bufferRef = useRef({ text: '', mtimeMs: 0 });
 
       const loadFiles = useCallback(async () => {
         const result = await api('files', { local_path: workspace.localDir });
@@ -615,18 +956,12 @@ window.__ModuleLoader__.load({
         setBusy(`open:${path}`);
         try {
           const result = await api('readFile', { local_path: workspace.localDir, path });
+          bufferRef.current = { text: result.text, mtimeMs: result.mtimeMs };
           setFile({ path, text: result.text, mtimeMs: result.mtimeMs });
           setDirty(false);
           setError('');
           if (line !== undefined && line !== null) {
-            requestAnimationFrame(() => {
-              const node = codeRef.current;
-              if (node === undefined || node === null) return;
-              const lines = result.text.split('\n');
-              const offset = lines.slice(0, Math.max(0, line - 1)).join('\n').length;
-              node.focus();
-              node.setSelectionRange(offset, offset + (lines[line - 1]?.length ?? 0));
-            });
+            requestAnimationFrame(() => editorRef.current?.revealLine(line));
           }
         } catch (e) { setError(errorText(e)); } finally { setBusy(''); }
       }, [api, workspace.localDir]);
@@ -654,8 +989,9 @@ window.__ModuleLoader__.load({
         setBusy('save');
         try {
           const result = await api('writeFile', { local_path: workspace.localDir, path: file.path,
-            text: file.text, mtime_ms: file.mtimeMs });
-          setFile({ ...file, mtimeMs: result.mtimeMs });
+            text: bufferRef.current.text, mtime_ms: bufferRef.current.mtimeMs });
+          bufferRef.current = { ...bufferRef.current, mtimeMs: result.mtimeMs };
+          setFile({ ...file, text: bufferRef.current.text, mtimeMs: result.mtimeMs });
           setDirty(false);
           setNotice('已保存，改动正在推送到 Overleaf。');
           return true;
@@ -679,13 +1015,6 @@ window.__ModuleLoader__.load({
         setBusy('live');
         try { setStatus(await api('live', { local_path: workspace.localDir, action })); }
         catch (e) { setError(errorText(e)); } finally { setBusy(''); }
-      };
-
-      const onKeyDown = (event) => {
-        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
-          event.preventDefault();
-          void save();
-        }
       };
 
       const header = h('div', { className: 'dsh-ol-row-head', style: { marginBottom: 12 } },
@@ -713,14 +1042,18 @@ window.__ModuleLoader__.load({
           h('button', { className: 'dsh-ol-primary', disabled: busy !== '', onClick: () => { void compileNow(); } },
             busy === 'compile' ? '编译中…' : '编译')));
 
-      const codeArea = h('textarea', {
-        ref: codeRef,
-        className: 'dsh-ol-code',
+      const codeArea = h(CodeEditor, {
+        ref: editorRef,
+        className: 'dsh-ol-cm-panel',
         value: file?.text ?? '',
-        disabled: file === undefined,
-        spellCheck: false,
-        onKeyDown,
-        onChange: (event) => { setFile({ ...file, text: event.target.value }); setDirty(true); setNotice(''); },
+        readOnly: file === undefined,
+        onSave: () => { void save(); },
+        onChange: (text) => {
+          bufferRef.current = { ...bufferRef.current, text };
+          setFile((previous) => (previous === undefined ? previous : { ...previous, text }));
+          setDirty(true);
+          setNotice('');
+        },
       });
 
       const errorList = compile === undefined || compile.errors.length === 0 ? null
@@ -736,7 +1069,7 @@ window.__ModuleLoader__.load({
           compile.pdfPath ? ' PDF 已写入工作区，可用「打开 PDF」或侧边栏「文件」查看。' : ''),
         errorList);
 
-      return h('div', { className: 'dsh-ol-card' }, header,
+      return h('div', { className: 'dsh-ol-card' }, h('style', null, EDITOR_CSS), header,
         h(LiveBar, { status, onLive, busy: busy !== '' }),
         error ? h('p', { className: 'dsh-ol-error' }, error) : null,
         notice ? h('p', { className: 'dsh-ol-ok' }, notice) : null,
@@ -1040,7 +1373,7 @@ window.__ModuleLoader__.load({
      */
     function createOverleafLayout(ctx) {
       const style = document.createElement('style');
-      style.textContent = LAYOUT_CSS;
+      style.textContent = LAYOUT_CSS + EDITOR_CSS;
       document.head.append(style);
 
       let wanted = false;
@@ -1654,6 +1987,14 @@ window.__ModuleLoader__.load({
       apply(ctx) {
         const api = makeApi(ctx);
         const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+        const waitFor = async (predicate, timeout = 600, step = 20) => {
+          const end = Date.now() + timeout;
+          while (Date.now() < end) {
+            if (predicate()) return true;
+            await wait(step);
+          }
+          return predicate();
+        };
         // Optional services are looked up dynamically: declaring them in `inject`
         // would keep the whole plugin (panel and sidebar section included) pending
         // if a deployment does not provide them.
@@ -1661,6 +2002,28 @@ window.__ModuleLoader__.load({
 
         const workspaceIdFor = (localDir) => (ctx.workspaces.list.getSnapshot?.().items ?? [])
           .find((item) => item.path === localDir)?.workspaceId;
+
+        /** Open a path in the pane that does not hold the Files tree. */
+        const openInEditor = (absolutePath, path) => {
+          const service = sidebarService();
+          const sessionId = service?.mounted?.getSnapshot?.();
+          if (typeof sessionId !== 'string') return false;
+          rememberSession(sessionId, absolutePath);
+          const tabs = service.tabsIn?.(sessionId) ?? [];
+          const filesTab = tabs.find((tab) => tab.kind === 'files');
+          const filesPane = filesTab === undefined ? undefined : paneOfTab(filesTab.id);
+          const editorPane = filesPane === undefined ? undefined
+            : visibleDockPanes().find((candidate) => candidate !== filesPane);
+          try {
+            service.openResource(fileAddress(sessionId, path), editorPane === undefined
+              ? { preferNewPane: true }
+              : { paneId: editorPane.dataset.dockkitPane });
+            return true;
+          } catch (error) {
+            console.warn('[dsh-overleaf-workshop] new file could not open:', error);
+            return false;
+          }
+        };
 
         /**
          * Turn the right Sidebar into the three-column arrangement: the file
@@ -1677,9 +2040,14 @@ window.__ModuleLoader__.load({
           let panes = visibleDockPanes();
           if (panes.length < 2) {
             const filesPane = paneOfTab(filesTab.id);
-            if (filesPane !== undefined && actions?.splitPane !== undefined) {
-              try { actions.splitPane(sessionId, filesPane.dataset.dockkitPane); } catch { /* no room to split */ }
-              await wait(320);
+            if (filesPane !== undefined) {
+              const splitId = sidebar.split?.(filesPane.dataset.dockkitPane);
+              if (typeof splitId === 'string') {
+                await waitFor(() => visibleDockPanes().length >= 2);
+              } else if (actions?.splitPane !== undefined) {
+                try { actions.splitPane(sessionId, filesPane.dataset.dockkitPane); } catch { /* no room to split */ }
+                await waitFor(() => visibleDockPanes().length >= 2);
+              }
             }
             panes = visibleDockPanes();
           }
@@ -1809,10 +2177,29 @@ window.__ModuleLoader__.load({
           };
           await attempt(openFiles);
           await wait(120);
+          // Establish the second pane before opening anything, then name it
+          // explicitly. Otherwise the first resource lands in the tree pane and
+          // only moves after arrangePanes runs, which is visible to the user.
+          let editorPane;
+          {
+            const tabs = sidebar.tabsIn?.(sessionId) ?? [];
+            const filesTab = tabs.find((tab) => tab.kind === 'files');
+            const filesPane = filesTab === undefined ? undefined : paneOfTab(filesTab.id);
+            if (filesPane !== undefined) {
+              editorPane = visibleDockPanes().find((candidate) => candidate !== filesPane);
+              if (editorPane === undefined) {
+                const splitId = sidebar.split?.(filesPane.dataset.dockkitPane);
+                if (typeof splitId === 'string') {
+                  await waitFor(() => visibleDockPanes().length >= 2);
+                  editorPane = visibleDockPanes().find((candidate) => candidate !== filesPane);
+                }
+              }
+            }
+          }
+          const editorPaneId = editorPane?.dataset.dockkitPane;
           if (info?.hasPdf === true) {
-            const split = visibleDockPanes().length < 2;
             await attempt(() => sidebar.openResource(fileAddress(sessionId, 'output.pdf'),
-              split ? { preferNewPane: true } : {}));
+              editorPaneId !== undefined ? { paneId: editorPaneId } : { preferNewPane: true }));
           }
           if (info?.mainFile !== undefined && info?.mainFile !== null) {
             // Name our type explicitly: the default registry ranking also has
@@ -1835,7 +2222,8 @@ window.__ModuleLoader__.load({
             // The PDF split is the normal case; without one, the source splits
             // the files pane instead. A restored tab in that pane is moved by
             // `arrangePanes` after it opens.
-            if (options.replaceTab === undefined && visibleDockPanes().length < 2) options.preferNewPane = true;
+            if (options.replaceTab === undefined && editorPaneId !== undefined) options.paneId = editorPaneId;
+            else if (options.replaceTab === undefined && visibleDockPanes().length < 2) options.preferNewPane = true;
             // Last, so opening the PDF cannot steal focus from the editor.
             const opened = await attempt(() => sidebar.openResource(address, options));
             if (!opened) await attempt(() => sidebar.openResource(address));
@@ -1872,21 +2260,29 @@ window.__ModuleLoader__.load({
          * phase instead, before the tree's own click handler runs.
          */
         const installFilePaneGuard = () => {
-          let focusTimer;
+          const scheduleSplitRatio = (sessionId) => {
+            const actions = findPaneActions(sessionId);
+            if (actions?.resizeSplit === undefined) return;
+            setTimeout(() => {
+              const filesTab = (sidebarService()?.tabsIn?.(sessionId) ?? [])
+                .find((tab) => tab.kind === 'files');
+              const filesPane = filesTab === undefined ? undefined : paneOfTab(filesTab.id);
+              const split = filesPane?.closest('[data-dockkit-split]');
+              if (split === null || split === undefined) return;
+              try {
+                actions.resizeSplit(sessionId, split.dataset.dockkitSplit,
+                  [FILES_PANE_RATIO, 1 - FILES_PANE_RATIO]);
+              } catch { /* keep the default split */ }
+            }, 60);
+          };
+
           const onClick = (event) => {
+            if (event.button !== undefined && event.button !== 0) return;
             const target = event.target instanceof Element ? event.target : undefined;
-            // The built-in tree exposes `data-files-path` on its rows; the
-            // alternate explorer uses a button with an absolute `title`.
-            const row = target?.closest('[data-files-path], [role="button"][title]');
+            const row = target?.closest('li[data-files-entry="file"][data-files-path]');
             if (row === null || row === undefined) return;
-            const path = row.getAttribute('data-files-path') ?? row.getAttribute('title') ?? '';
-            const entry = row.getAttribute('data-files-entry');
-            const name = path.split('/').pop() ?? '';
-            // Folders toggle in place; only actual files leave the column.
-            if (entry === 'folder') return;
-            if (entry === undefined
-              && (name.length === 0 || !name.includes('.') || String(row.className).includes('explorerDir'))) return;
-            if (entry === 'file' && name.length === 0) return;
+            const absPath = row.getAttribute('data-files-path');
+            if (absPath === null || absPath.length === 0) return;
             const pane = row.closest('[data-dockkit-pane]');
             if (pane === null) return;
             const service = sidebarService();
@@ -1895,71 +2291,60 @@ window.__ModuleLoader__.load({
             const tabs = service.tabsIn?.(sessionId) ?? [];
             const filesTab = tabs.find((tab) => tab.kind === 'files');
             if (filesTab === undefined || paneOfTab(filesTab.id) !== pane) return;
-            const beforeIds = new Set(tabs.filter((tab) => tab.kind !== 'files' && tab.kind !== 'guide')
-              .map((tab) => tab.id));
-            const editorTab = tabs.find((tab) => tab.kind !== 'files' && tab.kind !== 'guide'
-              && paneOfTab(tab.id) !== undefined && paneOfTab(tab.id) !== pane);
-            const editorPaneId = editorTab === undefined ? undefined : paneOfTab(editorTab.id)?.dataset.dockkitPane;
-            // Focus first, so a tree whose rows ask the controller to open the
-            // resource lands in the editor pane rather than the tree pane.
-            if (editorTab !== undefined) {
-              try { service.focus?.(editorTab.id); } catch { /* the tree's own open still works */ }
-            }
-            // Some trees (and an empty editor pane) ignore that; after the
-            // tree's handler has run, move whatever landed in the tree pane.
-            clearTimeout(focusTimer);
-            focusTimer = setTimeout(() => { void (async () => {
-              const current = sidebarService();
-              if (current === undefined || current.mounted?.getSnapshot?.() !== sessionId) return;
-              const filesPane = paneOfTab(filesTab.id);
-              if (filesPane === undefined) return;
-              const nowTabs = current.tabsIn?.(sessionId) ?? [];
-              const landed = nowTabs.filter((tab) => tab.kind !== 'files' && tab.kind !== 'guide'
-                && paneOfTab(tab.id) === filesPane && !beforeIds.has(tab.id));
-              if (landed.length > 0) {
-                const panes = visibleDockPanes();
-                let editorPane = panes.find((candidate) => candidate !== filesPane);
-                if (editorPane === undefined) {
-                  const actions = findPaneActions(sessionId);
-                  if (actions?.splitPane !== undefined && filesPane.dataset.dockkitPane !== undefined) {
-                    try { actions.splitPane(sessionId, filesPane.dataset.dockkitPane); } catch { /* no room */ }
-                    await wait(350);
-                    editorPane = visibleDockPanes().find((candidate) => candidate !== paneOfTab(filesTab.id));
+
+            // data-files-path is absolute. Convert it to the same session-relative
+            // path the Sidebar's own tree uses; an absolute path would be rejected
+            // by the host's workspace containment check.
+            const rawRoot = row.closest('[data-files-root]')?.getAttribute('data-files-root')
+              ?? sessionDirs()[sessionId];
+            const abs = String(absPath).replace(/\\/g, '/');
+            const root = typeof rawRoot === 'string' ? rawRoot.replace(/\\/g, '/').replace(/\/+$/u, '') : '';
+            let rel;
+            if (root.length > 0 && abs === root) return;
+            if (root.length > 0 && abs.startsWith(`${root}/`)) rel = abs.slice(root.length + 1);
+            else if (!abs.startsWith('/')) rel = abs;
+            else return;
+            if (rel.length === 0) return;
+            const address = fileAddress(sessionId, rel);
+
+            const panes = visibleDockPanes();
+            const other = panes.find((candidate) => candidate !== pane);
+            let editorPaneId = other?.dataset.dockkitPane;
+            const actions = findPaneActions(sessionId);
+            const existing = tabs.find((tab) => tab.contentId === address);
+            let createdSplit = false;
+
+            try {
+              if (existing !== undefined) {
+                const existingPane = paneOfTab(existing.id);
+                if (existingPane === pane && editorPaneId !== undefined) {
+                  actions?.placeTab?.(sessionId, existing.id, editorPaneId);
+                } else if (existingPane === pane) {
+                  const splitId = service.split?.(pane.dataset.dockkitPane);
+                  if (typeof splitId === 'string') {
+                    editorPaneId = splitId;
+                    createdSplit = true;
+                    actions?.placeTab?.(sessionId, existing.id, splitId);
                   }
                 }
-                if (editorPane !== undefined) {
-                  const actions = findPaneActions(sessionId);
-                  for (const tab of landed) {
-                    try { actions?.placeTab?.(sessionId, tab.id, editorPane.dataset.dockkitPane); } catch { /* leave it */ }
-                  }
-                  await wait(120);
-                  const split = paneOfTab(filesTab.id)?.closest('[data-dockkit-split]');
-                  if (split !== null && split !== undefined && actions?.resizeSplit !== undefined) {
-                    try {
-                      actions.resizeSplit(sessionId, split.dataset.dockkitSplit,
-                        [FILES_PANE_RATIO, 1 - FILES_PANE_RATIO]);
-                    } catch { /* keep the default split */ }
-                  }
-                  try { current.focus?.(landed[landed.length - 1].id); } catch { /* keep */ }
-                  pruneEditorPanes(sessionId, current);
-                }
-                return;
+                service.focus?.(existing.id);
+              } else if (editorPaneId !== undefined) {
+                service.openResource(address, { paneId: editorPaneId });
+              } else {
+                // No second pane: let the controller split atomically and open
+                // the resource in the new pane on its first render.
+                service.openResource(address, { preferNewPane: true });
+                createdSplit = true;
               }
-              // No move was needed: keep the caret on the editor tab the tree
-              // selected, instead of leaving focus in the directory pane.
-              const editorPane = editorPaneId === undefined ? undefined : visibleDockPanes()
-                .find((candidate) => candidate.dataset.dockkitPane === editorPaneId);
-              const selected = editorPane?.querySelector('[data-dockkit-tab][aria-selected="true"]');
-              const tabId = selected?.getAttribute('data-dockkit-tab');
-              if (tabId === null || tabId === undefined) return;
-              try { current.focus?.(tabId); } catch { /* keep the selection */ }
-            })(); }, 120);
+            } catch { return; }
+
+            // Only suppress the tree's own handler after the direct open worked.
+            event.preventDefault();
+            event.stopPropagation();
+            if (createdSplit) scheduleSplitRatio(sessionId);
           };
           document.addEventListener('click', onClick, true);
-          return () => {
-            clearTimeout(focusTimer);
-            document.removeEventListener('click', onClick, true);
-          };
+          return () => document.removeEventListener('click', onClick, true);
         };
         ctx.effect(() => installFilePaneGuard(), 'dsh-overleaf: file rows open in the editor pane');
 
@@ -1987,6 +2372,7 @@ window.__ModuleLoader__.load({
                 .map((extension) => `dsh-resource://file/session/**/*.${extension}`),
               priority: 'extension',
               canOpen: canOpenSource,
+              keepMounted: true,
               title: (address) => basenameOf(parseFileAddress(address)?.path ?? address),
             }), 'dsh-overleaf: source tab type');
             ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
@@ -2003,6 +2389,17 @@ window.__ModuleLoader__.load({
           catch (error) { noteSetupError('右侧栏服务不可用', error); }
         } else {
           noteSetupError('右侧栏服务不可用', new Error('客户端上下文缺少 inject()'));
+        }
+
+        try {
+          ctx.slots.inject('sidebar.right.tab.files.actions', () => ctx.slots.register({
+            name: 'sidebar.right.tab.files.actions',
+            id: 'dsh-overleaf/files-actions',
+            order: -10,
+            inject: () => ({ api, openInEditor }),
+          }, FilesActions));
+        } catch (error) {
+          console.warn('[dsh-overleaf-workshop] files actions slot unavailable:', error);
         }
 
         ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: PANEL,

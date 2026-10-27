@@ -5,21 +5,16 @@
  */
 
 import { readFileSync, readdirSync, statSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
-import { dirname, isAbsolute, join, normalize, sep } from 'node:path';
+import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { CookieExpiredError, OverleafClient, normalizeBaseUrl } from '../lib/api.js';
 import { guessMainFile, toRpcCompileResult } from '../lib/compile.js';
 import { isIgnoredPath, isOverleafProject, normalizeLocal, readProjectState } from '../lib/store.js';
+import { createWorkspaceFile, createWorkspaceFolder, resolveWorkspacePath } from '../lib/workspace-files.js';
 
 /** Resolve a project-relative path, refusing anything that escapes the workspace. */
 function safePath(localDir, path) {
-  const rel = String(path ?? '').split('\\').join('/');
-  if (rel.length === 0 || isAbsolute(rel) || rel.split('/').includes('..')) {
-    throw new Error('无效的文件路径。');
-  }
-  const absolute = normalize(join(localDir, rel.split('/').join(sep)));
-  if (absolute !== localDir && !absolute.startsWith(`${localDir}${sep}`)) throw new Error('无效的文件路径。');
-  return absolute;
+  return resolveWorkspacePath(localDir, path).absolute;
 }
 
 /** Resolve a requested main document to a workspace-relative `.tex` path. */
@@ -160,6 +155,27 @@ export async function registerOverleafUi(ctx, host, runtime) {
       };
     }
 
+    /** Cheap check for the Files-tab header controls. */
+    bound(request) {
+      return { bound: isOverleafProject(localDirOf(request)) };
+    }
+
+    /** Create an empty file; never overwrites an existing path. */
+    createFile(request) {
+      const localDir = localDirOf(request);
+      if (!isOverleafProject(localDir)) throw new Error('这个目录不是 Overleaf 工作区。');
+      return createWorkspaceFile(localDir, request.path);
+    }
+
+    /** Create a folder locally and, when live sync is connected, remotely. */
+    async createFolder(request) {
+      const localDir = localDirOf(request);
+      if (!isOverleafProject(localDir)) throw new Error('这个目录不是 Overleaf 工作区。');
+      const created = createWorkspaceFolder(localDir, request.path);
+      const remote = await runtime.live.createFolder(localDir, created.path).catch(() => false);
+      return { path: created.path, remote: remote === true };
+    }
+
     /** Start, stop or pause the live session. */
     async live(request) {
       const localDir = localDirOf(request);
@@ -276,6 +292,11 @@ export async function registerOverleafUi(ctx, host, runtime) {
     prepare: { request: target,
       result: z.object({ localDir: z.string(), bound: z.boolean(), mainFile: z.string().nullable(),
         hasPdf: z.boolean() }) },
+    bound: { request: target, result: z.object({ bound: z.boolean() }) },
+    createFile: { request: target.extend({ path: z.string().min(1).max(4096) }).strict(),
+      result: z.object({ path: z.string() }) },
+    createFolder: { request: target.extend({ path: z.string().min(1).max(4096) }).strict(),
+      result: z.object({ path: z.string(), remote: z.boolean() }) },
     files: { request: target,
       result: z.object({ entries: z.array(z.object({ path: z.string(), type: z.enum(['file', 'folder']),
         size: z.number().optional() })) }) },

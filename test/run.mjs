@@ -17,6 +17,8 @@ import { RealtimeSocket } from '../lib/socket.js';
 import { DocumentModel, decodeJoinLines, parseJoinAck, ReceiveResult } from '../lib/documents.js';
 import { applyOps, mergeTexts, textToOps } from '../lib/ot.js';
 import { OverleafLive, connectedCollaborators } from '../lib/live.js';
+import { LiveManager } from '../lib/live-manager.js';
+import { createWorkspaceFile, createWorkspaceFolder } from '../lib/workspace-files.js';
 import { writeProjectState, readProjectState } from '../lib/store.js';
 
 const sleep = (ms) => new Promise(resolveSleep => setTimeout(resolveSleep, ms));
@@ -503,6 +505,77 @@ await test('a remote folder move rewrites every descendant path', async () => {
   await sleep(1200);
   assert.ok(mock.state.docs.get('doc3').text.startsWith('MOVED\n'));
   await session.stop();
+});
+
+await test('workspace file creation never overwrites or escapes', () => {
+  const dir = freshWorkspace('create-files');
+  assert.deepEqual(createWorkspaceFile(dir, 'chapters/new.tex'), { path: 'chapters/new.tex' });
+  assert.ok(existsSync(join(dir, 'chapters', 'new.tex')));
+  assert.equal(readFileSync(join(dir, 'chapters', 'new.tex'), 'utf8'), '');
+  assert.throws(() => createWorkspaceFile(dir, 'chapters/new.tex'), /已存在/);
+  assert.throws(() => createWorkspaceFile(dir, '../escape.tex'), /无效/);
+  assert.throws(() => createWorkspaceFile(dir, '/absolute.tex'), /无效/);
+  assert.throws(() => createWorkspaceFile(dir, '.overleaf/state.tex'), /不能/);
+});
+
+await test('workspace folder creation supports nesting and rejects duplicates', () => {
+  const dir = freshWorkspace('create-folders');
+  assert.deepEqual(createWorkspaceFolder(dir, 'figures/plots/'), { path: 'figures/plots' });
+  assert.ok(existsSync(join(dir, 'figures', 'plots')));
+  assert.throws(() => createWorkspaceFolder(dir, 'figures/plots'), /已存在/);
+  assert.throws(() => createWorkspaceFolder(dir, '../escape'), /无效/);
+  assert.throws(() => createWorkspaceFolder(dir, '.overleaf'), /不能/);
+});
+
+await test('a local folder created by the watcher becomes a remote folder', async () => {
+  const dir = freshWorkspace('watch-folders');
+  const session = openSession(dir);
+  await session.start();
+  await sleep(400);
+  mock.state.folders = [];
+  mkdirSync(join(dir, 'watched', 'nested'), { recursive: true });
+  await sleep(1400);
+  assert.ok(mock.state.folders.some(folder => folder.name === 'watched'),
+    JSON.stringify(mock.state.folders));
+  assert.ok(mock.state.folders.some(folder => folder.name === 'nested'),
+    JSON.stringify(mock.state.folders));
+  assert.equal(session.byPath.get('watched/nested')?.type, 'folder');
+  await session.stop();
+});
+
+await test('explicit folder creation updates the remote tree', async () => {
+  const dir = freshWorkspace('explicit-folder');
+  const session = openSession(dir);
+  await session.start();
+  await sleep(400);
+  assert.equal(await session.createFolder('explicit/child'), true);
+  assert.equal(session.byPath.get('explicit')?.type, 'folder');
+  assert.equal(session.byPath.get('explicit/child')?.type, 'folder');
+  assert.ok(mock.state.folders.some(folder => folder.name === 'child'));
+  await session.stop();
+});
+
+await test('LiveManager creates folders only for a running session', async () => {
+  const dir = freshWorkspace('manager-folder');
+  const manager = new LiveManager({ runtime: { createClient: () => client }, log: () => {} });
+  assert.equal(await manager.createFolder(dir, 'before'), false);
+  await manager.start(dir);
+  await sleep(400);
+  assert.equal(await manager.createFolder(dir, 'from-manager'), true);
+  assert.ok(mock.state.folders.some(folder => folder.name === 'from-manager'));
+  await manager.stopAll();
+});
+
+await test('the vendored editor chunk has the module-loader contract', () => {
+  const root = new URL('..', import.meta.url);
+  const chunk = readFileSync(new URL('ui/client.editor.js', root), 'utf8');
+  const client = readFileSync(new URL('ui/client.js', root), 'utf8');
+  assert.ok(chunk.includes("chunk: 'client.editor.js'"));
+  assert.ok(chunk.includes("id: 'dsh-overleaf-workshop'"));
+  assert.ok(chunk.includes('__dshOverleafCodeMirror'));
+  assert.ok(chunk.includes('CodeMirror 5.65.16'));
+  assert.ok(existsSync(new URL('ui/codemirror-LICENSE', root)));
+  assert.ok(client.includes("require.async('./client.editor.js')"));
 });
 
 mock.server.close();
