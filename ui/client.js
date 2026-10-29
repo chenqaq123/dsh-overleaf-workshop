@@ -52,6 +52,7 @@ window.__ModuleLoader__.load({
       .dsh-ol-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
       .dsh-ol-editor{display:grid;grid-template-columns:230px 1fr;gap:14px;min-height:520px}
       .dsh-ol-files{border:1px solid color-mix(in srgb,currentColor 12%,transparent);border-radius:10px;padding:8px;overflow:auto;max-height:620px}
+      .dsh-ol-files-inner{position:relative;min-height:100%}
       .dsh-ol-file{display:flex;align-items:center;gap:6px;width:100%;border:0;text-align:left;padding:6px 8px;min-height:28px;font-size:12.5px;font-family:ui-monospace,SFMono-Regular,monospace;border-radius:6px;overflow:hidden;text-overflow:ellipsis}
       .dsh-ol-file.active{background:#5684ec22}
       .dsh-ol-file.folder{opacity:.75;font-weight:600;cursor:default}
@@ -88,16 +89,14 @@ window.__ModuleLoader__.load({
     const EDITOR_CSS = `
       .dsh-ol-cm-wrap{display:flex;flex:1;min-width:0;min-height:0;position:relative}
       .dsh-ol-cm{flex:1;min-width:0;min-height:0;overflow:hidden;overscroll-behavior:contain}
-      .dsh-ol-cm .CodeMirror{height:100%;background:transparent;color:var(--dsw-alias-label-primary,CanvasText);font-family:var(--ds-font-family-code,ui-monospace,SFMono-Regular,monospace);font-size:var(--dsh-content-font-size,var(--dsh-code-font-size,12px));line-height:calc(22px + var(--dsh-content-font-delta,0px));overscroll-behavior:contain}
-      .dsh-ol-cm .CodeMirror pre.CodeMirror-line,.dsh-ol-cm .CodeMirror pre.CodeMirror-line-like{font-family:inherit;font-size:inherit;line-height:inherit}
-      .dsh-ol-cm .CodeMirror-gutters{background:transparent;border-right:1px solid color-mix(in srgb,currentColor 9%,transparent)}
-      .dsh-ol-cm .CodeMirror-linenumber{color:color-mix(in srgb,currentColor 38%,transparent);padding:0 8px 0 4px}
-      .dsh-ol-cm .CodeMirror-cursor{border-left-color:currentColor}
-      .dsh-ol-cm .CodeMirror-selected,.dsh-ol-cm .CodeMirror-focused .CodeMirror-selected{background:color-mix(in srgb,#5684ec 24%,transparent)}
-      .dsh-ol-cm .CodeMirror-activeline-background{background:color-mix(in srgb,currentColor 5%,transparent)}
-      .dsh-ol-cm .CodeMirror-matchingbracket{color:#5684ec!important;text-decoration:none;border-bottom:1px solid #5684ec}
-      .dsh-ol-cm .CodeMirror-dialog{background:Canvas;color:CanvasText;border-color:color-mix(in srgb,currentColor 14%,transparent);font-family:var(--ds-font-family-code,ui-monospace,SFMono-Regular,monospace);font-size:var(--dsh-content-font-size,var(--dsh-code-font-size,12px))}
-      .dsh-ol-cm .CodeMirror-dialog input{background:transparent;color:inherit;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:4px;outline:none;padding:2px 5px}
+      .dsh-ol-cm .cm-editor{height:100%;background:transparent;color:var(--dsw-alias-label-primary,CanvasText);font-family:var(--ds-font-family-code,ui-monospace,SFMono-Regular,monospace);font-size:var(--dsh-content-font-size,var(--dsh-code-font-size,12px));overscroll-behavior:contain}
+      .dsh-ol-cm .cm-editor.cm-focused{outline:none}
+      .dsh-ol-cm .cm-scroller{font-family:inherit;line-height:calc(22px + var(--dsh-content-font-delta,0px));overflow:auto}
+      .dsh-ol-cm .cm-content{font-family:inherit;tab-size:2}
+      .dsh-ol-cm .cm-gutters{background:transparent;border-right:1px solid color-mix(in srgb,currentColor 9%,transparent)}
+      .dsh-ol-cm .cm-lineNumbers .cm-gutterElement{color:color-mix(in srgb,currentColor 38%,transparent);padding:0 8px 0 4px}
+      .dsh-ol-cm .cm-foldGutter{width:14px;color:#5684ec}
+      .dsh-ol-cm .cm-tooltip-autocomplete{z-index:30;background:Canvas;color:CanvasText;border:1px solid color-mix(in srgb,currentColor 16%,transparent);box-shadow:0 8px 24px #0003}
       .dsh-ol-cm .cm-keyword,.dsh-ol-cm .cm-command{color:#8b3fc7}
       .dsh-ol-cm .cm-atom,.dsh-ol-cm .cm-number{color:#b45309}
       .dsh-ol-cm .cm-def,.dsh-ol-cm .cm-variable-2{color:#1d4ed8}
@@ -199,6 +198,12 @@ window.__ModuleLoader__.load({
       .dsh-ol-src-note.error{color:#c34c4c;background:#c34c4c12;border:1px solid #c34c4c33}
       .dsh-ol-src-note.ok{color:#238155;background:#23815510;border:1px solid #23815533}
       .dsh-ol-src-note.warn{color:#a97400;background:#e0a10012;border:1px solid #e0a10033}
+      .dsh-ol-src-outline{flex:none;max-height:26%;overflow:auto;border-block:1px solid color-mix(in srgb,currentColor 10%,transparent);padding:4px 8px;background:color-mix(in srgb,currentColor 2%,transparent)}
+      .dsh-ol-src-outline-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:3px 2px 5px;font-size:11px;font-weight:650;opacity:.72}
+      .dsh-ol-src-outline button{display:block;width:100%;border:0;background:none;color:inherit;text-align:left;font:inherit;font-size:11.5px;line-height:1.5;padding:3px 5px;border-radius:4px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .dsh-ol-src-outline button:hover{background:var(--dsw-alias-interactive-bg-hover,color-mix(in srgb,currentColor 7%,transparent))}
+      .dsh-ol-src-recovery{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 10px 6px;padding:7px 9px;border-radius:7px;font-size:11.5px;line-height:1.5;color:#a97400;background:#e0a10012;border:1px solid #e0a10033}
+      .dsh-ol-src-recovery button{font:inherit;font-size:11px;border:1px solid currentColor;border-radius:5px;background:transparent;color:inherit;padding:2px 7px;cursor:pointer}
       .dsh-ol-src-code{flex:1;min-height:0;width:100%;box-sizing:border-box;border:0;outline:none;resize:none;background:transparent;color:inherit;font-family:ui-monospace,SFMono-Regular,monospace;font-size:12.5px;line-height:1.55;padding:6px 12px 14px;tab-size:2;white-space:pre;overflow:auto}
       .dsh-ol-src-errors{flex:none;max-height:34%;overflow:auto;border-top:1px solid color-mix(in srgb,currentColor 10%,transparent);padding:6px 8px 10px}
       .dsh-ol-src-error{display:block;width:100%;text-align:left;border:0;background:none;color:inherit;font:inherit;font-size:11.5px;line-height:1.5;padding:4px 6px;border-radius:5px;cursor:pointer;overflow-wrap:anywhere}
@@ -228,6 +233,172 @@ window.__ModuleLoader__.load({
       try { localStorage.setItem(SESSION_MAP_KEY, JSON.stringify(map)); } catch { /* Storage is optional. */ }
     };
     const isKnownSession = (sessionId) => typeof sessionDirs()[sessionId] === 'string';
+
+    const DRAFT_PREFIX = 'dsh-overleaf:draft:';
+    const workspaceIndexes = new Map();
+    const workspacePollers = new Map();
+    const LATEX_SOURCE = /\.(tex|bib|sty|cls|def|tikz|pgf|ltx|clo|ins|bst)$/i;
+    const LATEX_COMMANDS = [
+      'part', 'chapter', 'section', 'subsection', 'subsubsection', 'paragraph',
+      'documentclass', 'usepackage', 'begin', 'end', 'label', 'ref', 'pageref',
+      'autoref', 'eqref', 'cite', 'parencite', 'textcite', 'autocite', 'input',
+      'include', 'includegraphics', 'bibliography', 'addbibresource', 'item',
+      'textbf', 'textit', 'emph', 'underline', 'frac', 'sqrt', 'text', 'caption',
+      'footnote', 'url', 'href', 'newcommand', 'renewcommand', 'DeclareMathOperator',
+    ];
+    const LATEX_ENVIRONMENTS = [
+      'document', 'abstract', 'equation', 'equation*', 'align', 'align*', 'gather',
+      'gather*', 'multline', 'multline*', 'itemize', 'enumerate', 'description',
+      'figure', 'table', 'tabular', 'tabularx', 'thebibliography', 'verbatim',
+      'lstlisting', 'tikzpicture', 'matrix', 'cases', 'split', 'minipage',
+    ];
+
+    function draftKey(workspace, path) {
+      return `${DRAFT_PREFIX}${encodeURIComponent(String(workspace))}:${encodeURIComponent(String(path))}`;
+    }
+    function readDraft(workspace, path) {
+      try {
+        const value = JSON.parse(localStorage.getItem(draftKey(workspace, path)) ?? 'null');
+        return value && typeof value.text === 'string' && Number.isFinite(value.savedAt) ? value : undefined;
+      } catch { return undefined; }
+    }
+    function writeDraft(workspace, path, value) {
+      if (typeof value?.text !== 'string' || value.text.length > 2 * 1024 * 1024) return;
+      try { localStorage.setItem(draftKey(workspace, path), JSON.stringify({ ...value, savedAt: Date.now() })); } catch { /* optional */ }
+    }
+    function clearDraft(workspace, path) {
+      try { localStorage.removeItem(draftKey(workspace, path)); } catch { /* optional */ }
+    }
+
+    function sourceOutline(text) {
+      const result = [];
+      const lines = String(text ?? '').split('\n');
+      const pattern = /^\s*\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?(?:\s*\[[^\]]*\])?\s*\{([^}]*)\}/;
+      const levels = { part: 0, chapter: 1, section: 2, subsection: 3,
+        subsubsection: 4, paragraph: 5, subparagraph: 6 };
+      lines.forEach((line, index) => {
+        const match = pattern.exec(line);
+        if (match) result.push({ line: index + 1, level: levels[match[1]], title: match[2].trim(), kind: match[1] });
+      });
+      return result;
+    }
+
+    function addMatches(set, text, pattern, group = 1) {
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
+        if (match[group]) set.add(match[group].trim());
+      }
+    }
+
+    function buildWorkspaceIndex(entries, files) {
+      const labels = new Set();
+      const citations = new Set();
+      const environments = new Set(LATEX_ENVIRONMENTS);
+      const commands = new Set(LATEX_COMMANDS);
+      const contents = new Map((files ?? []).map((file) => [file.path, file.text]));
+      for (const [path, text] of contents) {
+        addMatches(labels, text, /\\label\s*\{([^}]+)\}/g);
+        addMatches(environments, text, /\\begin\s*\{([^}]+)\}/g);
+        addMatches(commands, text, /\\([A-Za-z@]+)\b/g);
+        if (/\.bib$/i.test(path)) addMatches(citations, text, /@[A-Za-z]+\s*\{\s*([^,\s]+)/g);
+      }
+      return { entries: entries ?? [], contents, labels: [...labels].sort(), citations: [...citations].sort(),
+        environments: [...environments].sort(), commands: [...commands].sort(), ready: true };
+    }
+
+    async function loadWorkspaceIndex(api, workspace, { refresh = false } = {}) {
+      const target = typeof workspace === 'string' ? { local_path: workspace } : workspace;
+      const localDir = target.local_path ?? `session:${target.session_id}`;
+      const previous = workspaceIndexes.get(localDir);
+      if (!refresh && previous?.promise !== undefined) return previous.promise;
+      if (!refresh && previous?.ready === true) return previous;
+      const promise = (async () => {
+        const listing = await api('files', target);
+        const sourceFiles = listing.entries.filter((entry) => entry.type === 'file' && LATEX_SOURCE.test(entry.path)
+          && (entry.size === undefined || entry.size <= 4 * 1024 * 1024)).slice(0, 200);
+        let files = [];
+        try {
+          files = (await api('readFiles', { ...target,
+            paths: sourceFiles.map((entry) => entry.path), max_bytes: 8 * 1024 * 1024 })).files;
+        } catch { /* File listing still powers the explorer if indexing is unavailable. */ }
+        const index = buildWorkspaceIndex(listing.entries, files);
+        workspaceIndexes.set(localDir, index);
+        return index;
+      })();
+      workspaceIndexes.set(localDir, { promise });
+      try { return await promise; } catch (error) { workspaceIndexes.delete(localDir); throw error; }
+    }
+
+    function invalidateWorkspaceIndex(localDir) { workspaceIndexes.delete(localDir); }
+
+    function completionResult(index, cm) {
+      if (!index || typeof cm?.getCursor !== 'function') return null;
+      const cursor = cm.getCursor();
+      const line = cm.getLine(cursor.line) ?? '';
+      const before = line.slice(0, cursor.ch);
+      const labels = new Set(index.labels);
+      const environments = new Set(index.environments);
+      const commands = new Set(index.commands);
+      const currentText = typeof cm.getValue === 'function' ? cm.getValue() : '';
+      addMatches(labels, currentText, /\\label\s*\{([^}]+)\}/g);
+      addMatches(environments, currentText, /\\begin\s*\{([^}]+)\}/g);
+      addMatches(commands, currentText, /\\([A-Za-z@]+)\b/g);
+      const make = (values, token) => {
+        const list = [...new Set(values)].filter(Boolean).filter((value) => !token || value.toLowerCase().includes(token.toLowerCase()));
+        if (list.length === 0) return null;
+        return { list: list.slice(0, 200).map((value) => ({ text: value, displayText: value })),
+          from: { line: cursor.line, ch: cursor.ch - token.length }, to: cursor };
+      };
+      let match;
+      match = /\\(?:begin|end)\s*\{([^{}]*)$/u.exec(before);
+      if (match) return make(environments, match[1]);
+      match = /\\(?:cite|parencite|textcite|autocite)\*?\s*\{([^{}]*)$/u.exec(before);
+      if (match) return make(index.citations, match[1].split(',').pop().trim());
+      match = /\\(?:ref|pageref|autoref|eqref)\s*\{([^{}]*)$/u.exec(before);
+      if (match) return make(labels, match[1]);
+      match = /\\(?:input|include|includegraphics|bibliography|addbibresource)\s*\{([^{}]*)$/u.exec(before);
+      if (match) {
+        const token = match[1].split('/').pop();
+        const paths = index.entries.filter((entry) => entry.type === 'file').map((entry) => entry.path)
+          .flatMap((path) => [path, path.replace(/\.[^.\/]+$/u, '')]);
+        return make(paths, token);
+      }
+      match = /\\([A-Za-z@]*)$/u.exec(before);
+      if (match) return make([...commands].map((command) => `\\${command}`), `\\${match[1]}`);
+      return null;
+    }
+
+    function subscribeWorkspaceFiles(api, target, path, callback) {
+      const key = target.local_path ?? `session:${target.session_id}`;
+      let poller = workspacePollers.get(key);
+      if (poller === undefined) {
+        poller = { api, target, subscribers: new Map(), timer: undefined, busy: false };
+        workspacePollers.set(key, poller);
+      }
+      let listeners = poller.subscribers.get(path);
+      if (listeners === undefined) { listeners = new Set(); poller.subscribers.set(path, listeners); }
+      listeners.add(callback);
+      const poll = async () => {
+        if (poller.busy || document.visibilityState !== 'visible' || poller.subscribers.size === 0) return;
+        poller.busy = true;
+        try {
+          const result = await poller.api('readFiles', { ...poller.target, paths: [...poller.subscribers.keys()], max_bytes: 8 * 1024 * 1024 });
+          for (const file of result.files) for (const listener of poller.subscribers.get(file.path) ?? []) listener(file);
+        } catch { /* The next tick retries after a file write or reconnect. */ }
+        finally { poller.busy = false; }
+      };
+      if (poller.timer === undefined) {
+        void poll();
+        poller.timer = setInterval(poll, POLL_MS);
+      }
+      return () => {
+        listeners.delete(callback);
+        if (listeners.size === 0) poller.subscribers.delete(path);
+        if (poller.subscribers.size === 0) {
+          clearInterval(poller.timer); poller.timer = undefined; workspacePollers.delete(key);
+        }
+      };
+    }
 
     /** Parse `dsh-resource://file/session/<id>/<path>`; undefined for anything else. */
     function parseFileAddress(address) {
@@ -366,14 +537,14 @@ window.__ModuleLoader__.load({
      * opens a source file does not pay for it. If the chunk cannot load, a
      * textarea with the same DSH code-font rules keeps editing usable.
      */
-    const CodeEditor = forwardRef(function CodeEditor({ value, readOnly, onChange, onSave, className }, ref) {
+    const CodeEditor = forwardRef(function CodeEditor({ value, readOnly, onChange, onSave, getCompletions, className }, ref) {
       const hostRef = useRef(undefined);
       const fallbackRef = useRef(undefined);
       const handleRef = useRef(undefined);
       const pendingLine = useRef(undefined);
-      const callbacksRef = useRef({ onChange, onSave });
+      const callbacksRef = useRef({ onChange, onSave, getCompletions });
       const valueRef = useRef(value ?? '');
-      callbacksRef.current = { onChange, onSave };
+      callbacksRef.current = { onChange, onSave, getCompletions };
       valueRef.current = value ?? '';
       const [phase, setPhase] = useState('loading');
 
@@ -387,6 +558,7 @@ window.__ModuleLoader__.load({
             readOnly: readOnly === true,
             onChange: (text) => callbacksRef.current.onChange?.(text),
             onSave: () => callbacksRef.current.onSave?.(),
+            getCompletions: (cm) => callbacksRef.current.getCompletions?.(cm),
           });
           handleRef.current = local;
           setPhase('ready');
@@ -414,6 +586,11 @@ window.__ModuleLoader__.load({
         if (phase !== 'ready') return;
         handleRef.current?.setReadOnly(readOnly === true);
       }, [phase, readOnly]);
+
+      useLayoutEffect(() => {
+        if (phase !== 'ready') return;
+        handleRef.current?.setCompletions(getCompletions);
+      }, [phase, getCompletions]);
 
       useLayoutEffect(() => {
         if (phase !== 'ready' || pendingLine.current === undefined) return;
@@ -582,6 +759,7 @@ window.__ModuleLoader__.load({
           const result = await api(kind === 'file' ? 'createFile' : 'createFolder',
             { local_path: absolutePath, path });
           const created = result?.path ?? path;
+          invalidateWorkspaceIndex(absolutePath);
           close();
           reloadTree();
           if (kind === 'file') openInEditor?.(absolutePath, created);
@@ -680,6 +858,7 @@ window.__ModuleLoader__.load({
       // the host can otherwise derive it from the Session header.
       const [localPath] = useState(() => (sessionId === undefined ? undefined : sessionDirs()[sessionId]));
       const where = () => (typeof localPath === 'string' ? { local_path: localPath } : { session_id: sessionId });
+      const workspaceKey = localPath ?? sessionId;
       const [file, setFile] = useState(undefined);
       const [dirty, setDirty] = useState(false);
       const [busy, setBusy] = useState('');
@@ -693,6 +872,9 @@ window.__ModuleLoader__.load({
       /** Bumped on every buffer change, so the autosave timer restarts. */
       const [editRevision, setEditRevision] = useState(0);
       const [saving, setSaving] = useState(false);
+      const [workspaceIndex, setWorkspaceIndex] = useState(undefined);
+      const [outlineOpen, setOutlineOpen] = useState(false);
+      const [recovery, setRecovery] = useState(undefined);
       const savingRef = useRef(false);
       const editorRef = useRef(undefined);
       // Where the last navigation asked to land; read when the initial load
@@ -710,9 +892,15 @@ window.__ModuleLoader__.load({
         setFile({ path, text: result.text, mtimeMs: result.mtimeMs });
         setDirty(false);
         setPushWatch(undefined);
+        if (workspaceKey !== undefined && path !== undefined) {
+          const draft = readDraft(workspaceKey, path);
+          if (draft !== undefined && draft.text !== result.text && Date.now() - draft.savedAt < 7 * 24 * 60 * 60 * 1000) {
+            setRecovery(draft);
+          } else if (draft?.text === result.text) clearDraft(workspaceKey, path);
+        }
         const line = lineRef.current;
         if (typeof line === 'number') requestAnimationFrame(() => editorRef.current?.revealLine(line));
-      }, [path]);
+      }, [path, workspaceKey]);
 
       useEffect(() => { lineRef.current = tab.navigation?.params?.line; });
 
@@ -728,6 +916,15 @@ window.__ModuleLoader__.load({
       }, [api, sessionId, path, adopt]);
 
       useEffect(() => { void load(); }, [load]);
+
+      useEffect(() => {
+        if (typeof workspaceKey !== 'string') return undefined;
+        let cancelled = false;
+        void loadWorkspaceIndex(api, where())
+          .then((index) => { if (!cancelled) setWorkspaceIndex(index); })
+          .catch(() => {});
+        return () => { cancelled = true; };
+      }, [api, workspaceKey, localPath]);
 
       // A later navigation (an error row, the file tree) only moves the caret.
       useEffect(() => {
@@ -758,16 +955,13 @@ window.__ModuleLoader__.load({
         return () => { cancelled = true; };
       }, [api, sessionId, path, tab.visible, localPath]);
 
-      // Collaborators and the agent write the file on disk. Adopt their change
-      // when this buffer is clean; when the user has unsaved edits, merge the
-      // disk change into the buffer instead of ignoring it until save (the old
-      // code skipped both dirty and focused buffers, so remote edits never
-      // appeared while the user was looking at the file).
+      // One workspace-level poller batches all open source tabs into a single
+      // readFiles RPC. It preserves the old three-way merge behaviour while
+      // avoiding one timer and one request per editor tab.
       useEffect(() => {
         if (sessionId === undefined || path === undefined || tab.visible === false) return undefined;
-        const timer = setInterval(async () => {
+        return subscribeWorkspaceFiles(api, where(), path, async (result) => {
           try {
-            const result = await api('readFile', { ...where(), path });
             const current = live.current;
             if (result.text === current.text) {
               live.current = { ...current, baseText: result.text, mtimeMs: result.mtimeMs };
@@ -781,7 +975,6 @@ window.__ModuleLoader__.load({
               return;
             }
             if (result.text === current.baseText) {
-              // Only the unsaved buffer differs; there is no new remote change.
               live.current = { ...current, mtimeMs: result.mtimeMs };
               return;
             }
@@ -789,8 +982,6 @@ window.__ModuleLoader__.load({
             const merged = await api('merge', { base_text: current.baseText,
               ours: current.text, theirs: result.text });
             const latest = live.current;
-            // The user may have typed while the merge was in flight; let the
-            // next tick merge again rather than overwriting those keystrokes.
             if (latest.text !== current.text) return;
             const nextText = merged.text;
             live.current = { ...latest, text: nextText, baseText: result.text,
@@ -802,10 +993,9 @@ window.__ModuleLoader__.load({
             setDirty(nextText !== result.text);
             if (nextText !== result.text) setEditRevision((value) => value + 1);
             setNotice(merged.conflict ? '远端改动有冲突，已保留本地文本。' : '');
-          } catch { /* the file may be mid-write; try again on the next tick */ }
-        }, 1500);
-        return () => clearInterval(timer);
-      }, [api, sessionId, path, tab.visible]);
+          } catch { /* the file may be mid-write; retry on the next batch */ }
+        });
+      }, [api, sessionId, path, tab.visible, localPath]);
 
       const save = useCallback(async ({ auto = false } = {}) => {
         // Starting or stopping live sync must not lock the local buffer: during
@@ -833,6 +1023,7 @@ window.__ModuleLoader__.load({
             setFile((previous) => (previous === undefined ? previous
               : { ...previous, text: result.text, mtimeMs: result.mtimeMs }));
             setDirty(false);
+            if (workspaceKey !== undefined) clearDraft(workspaceKey, path);
           } else {
             // Keystrokes arrived while the save was on the wire. Keep them and
             // let the merge poll apply base(savedText) -> disk(result.text).
@@ -905,6 +1096,32 @@ window.__ModuleLoader__.load({
         const timer = setTimeout(() => { void save({ auto: true }); }, 900);
         return () => clearTimeout(timer);
       }, [editRevision, dirty, saving, busy, save, sessionId, path]);
+
+      // Keep a small browser-local recovery copy while the buffer is dirty.
+      // This survives a renderer crash or an interrupted Harness restart; a
+      // matching save removes it automatically.
+      useEffect(() => {
+        if (!dirty || workspaceKey === undefined || path === undefined) return undefined;
+        const timer = setTimeout(() => writeDraft(workspaceKey, path, {
+          text: live.current.text, baseText: live.current.baseText, mtimeMs: live.current.mtimeMs,
+        }), 500);
+        return () => clearTimeout(timer);
+      }, [dirty, editRevision, workspaceKey, path]);
+
+      const recoverDraft = () => {
+        if (recovery === undefined) return;
+        live.current = { text: recovery.text, baseText: recovery.baseText ?? live.current.baseText,
+          mtimeMs: recovery.mtimeMs ?? live.current.mtimeMs, dirty: true };
+        setFile((previous) => (previous === undefined ? previous : { ...previous, text: recovery.text }));
+        setDirty(true);
+        setEditRevision((value) => value + 1);
+        setRecovery(undefined);
+        setNotice('已恢复本地草稿，保存后会重新推送到 Overleaf。');
+      };
+      const discardDraft = () => {
+        if (workspaceKey !== undefined && path !== undefined) clearDraft(workspaceKey, path);
+        setRecovery(undefined);
+      };
 
       const compileNow = async () => {
         if (sessionId === undefined) return;
@@ -981,11 +1198,13 @@ window.__ModuleLoader__.load({
 
       const errors = compile === undefined ? [] : compile.errors.slice(0, 12);
       const statusLine = dirty ? '未保存' : busy === 'load' ? '读取中…' : '已保存';
+      const outline = sourceOutline(file?.text ?? '');
 
       return h('div', { className: 'dsh-ol-src' }, h('style', null, SOURCE_CSS + EDITOR_CSS),
         h('div', { className: 'dsh-ol-src-bar' },
           h('span', { className: 'dsh-ol-src-name' }, basenameOf(path)),
           h('span', { className: 'dsh-ol-src-spacer' }),
+          h('button', { disabled: file === undefined, onClick: () => setOutlineOpen((value) => !value) }, outlineOpen ? '隐藏大纲' : '大纲'),
           h('button', { disabled: busy === 'save' || busy === 'load' || saving || !dirty,
             onClick: () => { void save(); } },
             busy === 'save' ? '保存中…' : '保存'),
@@ -1000,10 +1219,21 @@ window.__ModuleLoader__.load({
         h('div', { className: 'dsh-ol-src-path' }, `${path} · ${statusLine}`),
         error !== '' ? h('div', { className: 'dsh-ol-src-note error' }, error) : null,
         notice !== '' && error === '' ? h('div', { className: 'dsh-ol-src-note ok' }, notice) : null,
+        recovery !== undefined ? h('div', { className: 'dsh-ol-src-recovery' },
+          h('span', null, '发现未恢复的本地草稿（可能来自上次异常退出）。'),
+          h('button', { onClick: recoverDraft }, '恢复草稿'),
+          h('button', { onClick: discardDraft }, '丢弃')) : null,
+        outlineOpen ? h('div', { className: 'dsh-ol-src-outline' },
+          h('div', { className: 'dsh-ol-src-outline-head' }, h('span', null, '章节大纲'),
+            h('span', null, `${outline.length} 项`)),
+          outline.length === 0 ? h('div', { className: 'dsh-ol-src-empty' }, '当前文件还没有章节命令。')
+            : outline.map((item) => h('button', { key: `${item.line}:${item.title}`, style: { paddingLeft: `${6 + item.level * 12}px` },
+              title: `${item.kind} · 第 ${item.line} 行`, onClick: () => editorRef.current?.revealLine(item.line) }, item.title || '(未命名章节)'))) : null,
         h(CodeEditor, {
           ref: editorRef,
           value: file?.text ?? '',
           readOnly: file === undefined,
+          getCompletions: (cm) => completionResult(workspaceIndex, cm),
           onSave: () => { void save(); },
           onChange: (text) => {
             live.current = { ...live.current, text, dirty: true };
@@ -1093,6 +1323,28 @@ window.__ModuleLoader__.load({
         status.error ? h('span', { className: 'dsh-ol-dirty' }, status.error) : null);
     }
 
+    /** Render only the visible rows of a potentially very large project tree. */
+    function VirtualFileList({ entries, file, busy, onOpen }) {
+      const [scrollTop, setScrollTop] = useState(0);
+      const viewportRef = useRef(undefined);
+      const rowHeight = 30;
+      const viewportHeight = viewportRef.current?.clientHeight ?? 560;
+      const start = Math.max(0, Math.floor(scrollTop / rowHeight) - 8);
+      const visibleCount = Math.ceil(viewportHeight / rowHeight) + 16;
+      const visible = entries.slice(start, Math.min(entries.length, start + visibleCount));
+      return h('div', { className: 'dsh-ol-files', ref: viewportRef,
+        onScroll: (event) => setScrollTop(event.currentTarget.scrollTop) },
+      h('div', { className: 'dsh-ol-files-inner', style: { height: `${entries.length * rowHeight}px` } },
+        visible.map((entry, index) => h('button', {
+          key: entry.path,
+          className: `dsh-ol-file${entry.type === 'folder' ? ' folder' : ''}${file?.path === entry.path ? ' active' : ''}`,
+          disabled: entry.type === 'folder' || busy !== '',
+          style: { position: 'absolute', top: `${(start + index) * rowHeight}px`, left: 0, right: 0,
+            paddingLeft: 8 + (entry.path.split('/').length - 1) * 12 },
+          onClick: () => { void onOpen(entry.path); },
+        }, entry.type === 'folder' ? '▸ ' : '  ', entry.path.split('/').pop()))));
+    }
+
     /** File tree + source editor + compile results for one workspace. */
     function WorkspaceEditor({ workspace, api, openPdf, onClose }) {
       const [entries, setEntries] = useState([]);
@@ -1104,11 +1356,16 @@ window.__ModuleLoader__.load({
       const [notice, setNotice] = useState('');
       const [compile, setCompile] = useState(undefined);
       const [pushWatch, setPushWatch] = useState(undefined);
+      const [workspaceIndex, setWorkspaceIndex] = useState(undefined);
+      const [outlineOpen, setOutlineOpen] = useState(false);
+      const [recovery, setRecovery] = useState(undefined);
+      const [editRevision, setEditRevision] = useState(0);
       const editorRef = useRef(undefined);
       const bufferRef = useRef({ text: '', baseText: '', mtimeMs: 0 });
 
       const loadFiles = useCallback(async () => {
-        const result = await api('files', { local_path: workspace.localDir });
+        const result = await loadWorkspaceIndex(api, workspace.localDir);
+        setWorkspaceIndex(result);
         setEntries(result.entries);
       }, [api, workspace.localDir]);
 
@@ -1119,6 +1376,10 @@ window.__ModuleLoader__.load({
           bufferRef.current = { text: result.text, baseText: result.text, mtimeMs: result.mtimeMs };
           setFile({ path, text: result.text, mtimeMs: result.mtimeMs });
           setDirty(false);
+          const draft = readDraft(workspace.localDir, path);
+          if (draft !== undefined && draft.text !== result.text && Date.now() - draft.savedAt < 7 * 24 * 60 * 60 * 1000) {
+            setRecovery(draft);
+          } else if (draft?.text === result.text) clearDraft(workspace.localDir, path);
           setError('');
           setPushWatch(undefined);
           if (line !== undefined && line !== null) {
@@ -1156,6 +1417,7 @@ window.__ModuleLoader__.load({
           bufferRef.current = { text: result.text, baseText: result.text, mtimeMs: result.mtimeMs };
           setFile({ ...file, text: result.text, mtimeMs: result.mtimeMs });
           setDirty(false);
+          clearDraft(workspace.localDir, file.path);
           setNotice(result.conflict ? '远端改动有冲突，已保留本地文本。' : '');
           setError('');
           setPushWatch(undefined);
@@ -1199,6 +1461,29 @@ window.__ModuleLoader__.load({
         return () => { cancelled = true; clearTimeout(timer); };
       }, [pushWatch, api, workspace.localDir]);
 
+      useEffect(() => {
+        if (!dirty || file === undefined) return undefined;
+        const timer = setTimeout(() => writeDraft(workspace.localDir, file.path, {
+          text: bufferRef.current.text, baseText: bufferRef.current.baseText, mtimeMs: bufferRef.current.mtimeMs,
+        }), 500);
+        return () => clearTimeout(timer);
+      }, [dirty, editRevision, workspace.localDir, file?.path]);
+
+      const recoverDraft = () => {
+        if (recovery === undefined || file === undefined) return;
+        bufferRef.current = { text: recovery.text, baseText: recovery.baseText ?? bufferRef.current.baseText,
+          mtimeMs: recovery.mtimeMs ?? bufferRef.current.mtimeMs };
+        setFile((previous) => (previous === undefined ? previous : { ...previous, text: recovery.text }));
+        setDirty(true);
+        setEditRevision((value) => value + 1);
+        setRecovery(undefined);
+        setNotice('已恢复本地草稿，保存后会重新推送到 Overleaf。');
+      };
+      const discardDraft = () => {
+        if (file !== undefined) clearDraft(workspace.localDir, file.path);
+        setRecovery(undefined);
+      };
+
       const compileNow = useCallback(async () => {
         if (dirty && !(await save())) return;
         setBusy('compile'); setCompile(undefined);
@@ -1226,18 +1511,13 @@ window.__ModuleLoader__.load({
           h('button', { disabled: busy !== '', onClick: openPdf }, '打开 PDF'),
           h('button', { disabled: busy !== '', onClick: onClose }, '收起编辑器')));
 
-      const fileList = h('div', { className: 'dsh-ol-files' }, entries.map((entry) => h('button', {
-        key: entry.path,
-        className: `dsh-ol-file${entry.type === 'folder' ? ' folder' : ''}${file?.path === entry.path ? ' active' : ''}`,
-        disabled: entry.type === 'folder' || busy !== '',
-        style: { paddingLeft: 8 + (entry.path.split('/').length - 1) * 12 },
-        onClick: () => { void openFile(entry.path); },
-      }, entry.type === 'folder' ? '▸ ' : '  ', entry.path.split('/').pop())));
+      const fileList = h(VirtualFileList, { entries, file, busy, onOpen: openFile });
 
       const codeBar = h('div', { className: 'dsh-ol-codebar' },
         h('span', { className: 'dsh-ol-code-name' }, file?.path ?? '未选择文件'),
         h('span', { className: 'dsh-ol-actions' },
           dirty ? h('span', { className: 'dsh-ol-dirty' }, '未保存') : null,
+          h('button', { disabled: file === undefined, onClick: () => setOutlineOpen((value) => !value) }, outlineOpen ? '隐藏大纲' : '大纲'),
           h('button', { disabled: !dirty || busy === 'save', onClick: () => { void save(); } },
             busy === 'save' ? '保存中…' : '保存 (⌘S)'),
           h('button', { className: 'dsh-ol-primary', disabled: busy !== '', onClick: () => { void compileNow(); } },
@@ -1248,11 +1528,13 @@ window.__ModuleLoader__.load({
         className: 'dsh-ol-cm-panel',
         value: file?.text ?? '',
         readOnly: file === undefined,
+        getCompletions: (cm) => completionResult(workspaceIndex, cm),
         onSave: () => { void save(); },
         onChange: (text) => {
           bufferRef.current = { ...bufferRef.current, text };
           setFile((previous) => (previous === undefined ? previous : { ...previous, text }));
           setDirty(true);
+          setEditRevision((value) => value + 1);
           setNotice('');
           setPushWatch(undefined);
         },
@@ -1275,6 +1557,15 @@ window.__ModuleLoader__.load({
         h(LiveBar, { status, onLive, busy: busy !== '' }),
         error ? h('p', { className: 'dsh-ol-error' }, error) : null,
         notice ? h('p', { className: 'dsh-ol-ok' }, notice) : null,
+        recovery !== undefined ? h('div', { className: 'dsh-ol-src-recovery' },
+          h('span', null, '发现未恢复的本地草稿。'), h('button', { onClick: recoverDraft }, '恢复草稿'),
+          h('button', { onClick: discardDraft }, '丢弃')) : null,
+        outlineOpen ? h('div', { className: 'dsh-ol-src-outline' },
+          h('div', { className: 'dsh-ol-src-outline-head' }, h('span', null, '章节大纲'),
+            h('span', null, `${sourceOutline(file?.text ?? '').length} 项`)),
+          sourceOutline(file?.text ?? '').map((item) => h('button', { key: `${item.line}:${item.title}`,
+            style: { paddingLeft: `${6 + item.level * 12}px` }, onClick: () => editorRef.current?.revealLine(item.line) },
+          item.title || '(未命名章节)'))) : null,
         h('div', { className: 'dsh-ol-editor' }, fileList,
           h('div', { className: 'dsh-ol-code-wrap' }, codeBar, codeArea)),
         compilePanel);

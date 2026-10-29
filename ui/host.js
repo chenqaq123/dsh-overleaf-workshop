@@ -220,6 +220,29 @@ export async function registerOverleafUi(ctx, host, runtime) {
       return { text: buffer.toString('utf8'), mtimeMs: info.mtimeMs };
     }
 
+    /** Read several source files in one RPC for indexing and workspace polling. */
+    readFiles(request) {
+      const localDir = localDirOf(request);
+      if (!Array.isArray(request.paths) || request.paths.length > 200) {
+        throw new Error('一次最多读取 200 个文件。');
+      }
+      const maxBytes = Number.isSafeInteger(request.max_bytes) && request.max_bytes > 0
+        ? Math.min(request.max_bytes, 16 * 1024 * 1024) : 8 * 1024 * 1024;
+      let total = 0;
+      const files = [];
+      for (const path of request.paths) {
+        const file = safePath(localDir, path);
+        let info;
+        try { info = statSync(file); } catch { continue; }
+        if (!info.isFile() || info.size > 4 * 1024 * 1024 || total + info.size > maxBytes) continue;
+        const buffer = readFileSync(file);
+        if (buffer.includes(0)) continue;
+        total += buffer.length;
+        files.push({ path, text: buffer.toString('utf8'), mtimeMs: info.mtimeMs });
+      }
+      return { files, totalBytes: total };
+    }
+
     /**
      * Save the editor buffer.
      *
@@ -318,6 +341,10 @@ export async function registerOverleafUi(ctx, host, runtime) {
         size: z.number().optional() })) }) },
     readFile: { request: target.extend({ path: z.string().min(1).max(4096) }).strict(),
       result: z.object({ text: z.string(), mtimeMs: z.number() }) },
+    readFiles: { request: target.extend({ paths: z.array(z.string().min(1).max(4096)).max(200),
+      max_bytes: z.number().int().positive().max(16 * 1024 * 1024).optional() }).strict(),
+      result: z.object({ files: z.array(z.object({ path: z.string(), text: z.string(), mtimeMs: z.number() })),
+        totalBytes: z.number() }) },
     writeFile: { request: target.extend({ path: z.string().min(1).max(4096),
       text: z.string(), base_text: z.string().optional(), mtime_ms: z.number().optional() }).strict(),
       result: z.object({ mtimeMs: z.number(), text: z.string(), merged: z.boolean(),

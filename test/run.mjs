@@ -683,7 +683,8 @@ await test('the vendored editor chunk has the module-loader contract', () => {
   assert.ok(chunk.includes("chunk: 'client.editor.js'"));
   assert.ok(chunk.includes("id: 'dsh-overleaf-workshop'"));
   assert.ok(chunk.includes('__dshOverleafCodeMirror'));
-  assert.ok(chunk.includes('CodeMirror 5.65.16'));
+  assert.ok(chunk.includes('CodeMirror 6'));
+  assert.ok(!chunk.includes('CodeMirror 5.65.16'));
   assert.ok(existsSync(new URL('ui/codemirror-LICENSE', root)));
   assert.ok(client.includes("require.async('./client.editor.js')"));
 });
