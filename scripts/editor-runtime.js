@@ -10,7 +10,7 @@
 import { autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap } from '@codemirror/autocomplete';
 import { defaultKeymap, history, historyKeymap, indentWithTab, toggleComment } from '@codemirror/commands';
 import {
-  StreamLanguage, bracketMatching, defaultHighlightStyle, foldCode, foldGutter, foldKeymap,
+  HighlightStyle, StreamLanguage, bracketMatching, foldCode, foldGutter, foldKeymap,
   foldService, indentOnInput, syntaxHighlighting, unfoldAll,
 } from '@codemirror/language';
 import { stex } from '@codemirror/legacy-modes/mode/stex';
@@ -19,6 +19,7 @@ import { Compartment, EditorSelection, EditorState } from '@codemirror/state';
 import {
   EditorView, drawSelection, highlightActiveLine, highlightSpecialChars, keymap, lineNumbers,
 } from '@codemirror/view';
+import { tags as t } from '@lezer/highlight';
 
 function withoutLatexComment(line) {
   let escaped = false;
@@ -75,6 +76,21 @@ function latexFold(state, lineStart, lineEnd) {
 const latexLanguage = StreamLanguage.define(stex);
 const latexFoldExtension = foldService.of(latexFold);
 
+/**
+ * Token spans get semantic classes; the colors live in the client CSS so they
+ * follow the Harness palette variables (and its light/dark themes) instead of
+ * a hardcoded editor scheme.
+ */
+const latexHighlight = HighlightStyle.define([
+  { tag: t.comment, class: 'cm-ol-comment' },
+  { tag: t.keyword, class: 'cm-ol-keyword' },
+  { tag: t.tagName, class: 'cm-ol-tag' },
+  { tag: [t.atom, t.string], class: 'cm-ol-string' },
+  { tag: [t.number, t.bool], class: 'cm-ol-number' },
+  { tag: t.standard(t.variableName), class: 'cm-ol-builtin' },
+  { tag: t.invalid, class: 'cm-ol-invalid' },
+]);
+
 const editorTheme = EditorView.theme({
   '&': {
     height: '100%',
@@ -90,8 +106,8 @@ const editorTheme = EditorView.theme({
   '.cm-lineNumbers .cm-gutterElement': { padding: '0 8px 0 4px' },
   '.cm-activeLine': { backgroundColor: 'color-mix(in srgb, currentColor 5%, transparent)' },
   '.cm-activeLineGutter': { backgroundColor: 'color-mix(in srgb, currentColor 5%, transparent)' },
-  '.cm-selectionBackground, ::selection': { backgroundColor: 'color-mix(in srgb, #5684ec 24%, transparent)' },
-  '.cm-matchingBracket': { color: '#5684ec !important', borderBottom: '1px solid #5684ec' },
+  '.cm-selectionBackground, ::selection': { backgroundColor: 'color-mix(in srgb, var(--dsw-alias-link, #89B4FA) 24%, transparent)' },
+  '.cm-matchingBracket': { color: 'var(--dsw-alias-link, #89B4FA) !important', borderBottom: '1px solid var(--dsw-alias-link, #89B4FA)' },
   '.cm-tooltip-autocomplete': { zIndex: '30', backgroundColor: 'Canvas', color: 'CanvasText' },
   '.cm-foldGutter': { width: '14px' },
 }, { dark: false });
@@ -147,7 +163,7 @@ function create(host, options = {}) {
         highlightActiveLine(),
         highlightSpecialChars(),
         EditorView.contentAttributes.of({ spellcheck: 'false', autocorrect: 'off', autocapitalize: 'off' }),
-        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+        syntaxHighlighting(latexHighlight),
         highlightSelectionMatches(),
         search(),
         autocompletion({ override: [completionSource()], defaultKeymap: false, closeOnBlur: true }),

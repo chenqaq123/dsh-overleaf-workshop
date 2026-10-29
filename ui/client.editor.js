@@ -22251,6 +22251,15 @@
   }
   var latexLanguage = StreamLanguage.define(stex);
   var latexFoldExtension = foldService.of(latexFold);
+  var latexHighlight = HighlightStyle.define([
+    { tag: tags.comment, class: "cm-ol-comment" },
+    { tag: tags.keyword, class: "cm-ol-keyword" },
+    { tag: tags.tagName, class: "cm-ol-tag" },
+    { tag: [tags.atom, tags.string], class: "cm-ol-string" },
+    { tag: [tags.number, tags.bool], class: "cm-ol-number" },
+    { tag: tags.standard(tags.variableName), class: "cm-ol-builtin" },
+    { tag: tags.invalid, class: "cm-ol-invalid" }
+  ]);
   var editorTheme = EditorView.theme({
     "&": {
       height: "100%",
@@ -22266,8 +22275,8 @@
     ".cm-lineNumbers .cm-gutterElement": { padding: "0 8px 0 4px" },
     ".cm-activeLine": { backgroundColor: "color-mix(in srgb, currentColor 5%, transparent)" },
     ".cm-activeLineGutter": { backgroundColor: "color-mix(in srgb, currentColor 5%, transparent)" },
-    ".cm-selectionBackground, ::selection": { backgroundColor: "color-mix(in srgb, #5684ec 24%, transparent)" },
-    ".cm-matchingBracket": { color: "#5684ec !important", borderBottom: "1px solid #5684ec" },
+    ".cm-selectionBackground, ::selection": { backgroundColor: "color-mix(in srgb, var(--dsw-alias-link, #89B4FA) 24%, transparent)" },
+    ".cm-matchingBracket": { color: "var(--dsw-alias-link, #89B4FA) !important", borderBottom: "1px solid var(--dsw-alias-link, #89B4FA)" },
     ".cm-tooltip-autocomplete": { zIndex: "30", backgroundColor: "Canvas", color: "CanvasText" },
     ".cm-foldGutter": { width: "14px" }
   }, { dark: false });
@@ -22328,7 +22337,7 @@
           highlightActiveLine(),
           highlightSpecialChars(),
           EditorView.contentAttributes.of({ spellcheck: "false", autocorrect: "off", autocapitalize: "off" }),
-          syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+          syntaxHighlighting(latexHighlight),
           highlightSelectionMatches(),
           search(),
           autocompletion({ override: [completionSource()], defaultKeymap: false, closeOnBlur: true }),
