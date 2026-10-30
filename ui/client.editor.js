@@ -22339,7 +22339,20 @@
           EditorView.contentAttributes.of({ spellcheck: "false", autocorrect: "off", autocapitalize: "off" }),
           syntaxHighlighting(latexHighlight),
           highlightSelectionMatches(),
-          search(),
+          EditorState.phrases.of({
+            Find: "\u67E5\u627E",
+            Replace: "\u66FF\u6362",
+            next: "\u4E0B\u4E00\u4E2A",
+            previous: "\u4E0A\u4E00\u4E2A",
+            all: "\u5168\u9009",
+            "match case": "\u533A\u5206\u5927\u5C0F\u5199",
+            regexp: "\u6B63\u5219",
+            "by word": "\u5168\u8BCD\u5339\u914D",
+            replace: "\u66FF\u6362",
+            "replace all": "\u5168\u90E8\u66FF\u6362",
+            close: "\u5173\u95ED"
+          }),
+          search({ top: true }),
           autocompletion({ override: [completionSource()], defaultKeymap: false, closeOnBlur: true }),
           readOnly2.of(options.readOnly === true ? EditorState.readOnly.of(true) : []),
           keymap.of([

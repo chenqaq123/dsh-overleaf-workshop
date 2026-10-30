@@ -165,7 +165,12 @@ function create(host, options = {}) {
         EditorView.contentAttributes.of({ spellcheck: 'false', autocorrect: 'off', autocapitalize: 'off' }),
         syntaxHighlighting(latexHighlight),
         highlightSelectionMatches(),
-        search(),
+        EditorState.phrases.of({
+          Find: '查找', Replace: '替换', next: '下一个', previous: '上一个', all: '全选',
+          'match case': '区分大小写', regexp: '正则', 'by word': '全词匹配',
+          replace: '替换', 'replace all': '全部替换', close: '关闭',
+        }),
+        search({ top: true }),
         autocompletion({ override: [completionSource()], defaultKeymap: false, closeOnBlur: true }),
         readOnly.of(options.readOnly === true ? EditorState.readOnly.of(true) : []),
         keymap.of([

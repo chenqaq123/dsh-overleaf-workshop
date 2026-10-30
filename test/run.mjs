@@ -685,14 +685,21 @@ await test('the vendored editor chunk has the module-loader contract', () => {
   assert.ok(chunk.includes('__dshOverleafCodeMirror'));
   assert.ok(chunk.includes('CodeMirror 6'));
   assert.ok(!chunk.includes('CodeMirror 5.65.16'));
-  assert.ok(!readFileSync(new URL('scripts/editor-runtime.js', root), 'utf8').includes('defaultHighlightStyle'),
+  const runtime = readFileSync(new URL('scripts/editor-runtime.js', root), 'utf8');
+  assert.ok(!runtime.includes('defaultHighlightStyle'),
     'tokens must use the Harness palette, not the CM default');
+  assert.ok(runtime.includes('search({ top: true })') && runtime.includes("Find: '查找'"),
+    'search uses the compact localized panel');
   assert.ok(chunk.includes('cm-ol-comment') && chunk.includes('cm-ol-keyword'),
     'tokens must map to the Harness palette classes');
   assert.ok(existsSync(new URL('ui/codemirror-LICENSE', root)));
   assert.ok(client.includes("require.async('./client.editor.js')"));
   assert.ok(client.includes('.cm-ol-keyword{color:var(--dsw-alias-state-idle-primary'));
   assert.ok(client.includes('.cm-ol-comment{color:#6C7086'));
+  assert.ok(client.includes("content:'项目文件'") && client.includes('LAYOUT_CSS + EDITOR_CSS + FILE_TREE_CSS'),
+    'the Overleaf file column keeps its compact toolbar');
+  assert.ok(client.includes('.dsh-ol-cm .cm-panel.cm-search{display:flex'),
+    'search controls use the Harness dark theme');
 });
 
 mock.server.close();

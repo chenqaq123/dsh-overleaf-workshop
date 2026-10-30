@@ -106,12 +106,31 @@ window.__ModuleLoader__.load({
       .dsh-ol-cm .cm-ol-comment{color:#6C7086;font-style:italic}
       body[data-ds-dark-theme] .dsh-ol-cm .cm-ol-comment{color:#7F849C}
       .dsh-ol-cm .cm-searching{background:color-mix(in srgb,var(--dsw-alias-state-warn-primary,#F9E2AF) 30%,transparent)}
+      .dsh-ol-cm .cm-panels{background:var(--dsw-alias-markdown-code-block-banner,#11111B);color:var(--dsw-alias-label-primary,CanvasText);border-color:color-mix(in srgb,currentColor 10%,transparent)}
+      .dsh-ol-cm .cm-panels-top{border-bottom:1px solid color-mix(in srgb,currentColor 10%,transparent)}
+      .dsh-ol-cm .cm-panels-bottom{border-top:1px solid color-mix(in srgb,currentColor 10%,transparent)}
+      .dsh-ol-cm .cm-panel.cm-search{display:flex;flex-wrap:wrap;align-items:center;gap:5px;padding:7px 38px 7px 12px;font-family:var(--ds-font-family-ui,inherit);font-size:12px;line-height:1.4}
+      .dsh-ol-cm .cm-panel.cm-search br{display:none}
+      .dsh-ol-cm .cm-panel.cm-search input,.dsh-ol-cm .cm-panel.cm-search button,.dsh-ol-cm .cm-panel.cm-search label{margin:0}
+      .dsh-ol-cm .cm-panel.cm-search .cm-textfield{box-sizing:border-box;flex:0 1 180px;min-width:110px;height:28px;padding:3px 8px;border:1px solid color-mix(in srgb,currentColor 16%,transparent);border-radius:6px;outline:none;background:color-mix(in srgb,currentColor 5%,transparent);color:var(--dsw-alias-label-primary,CanvasText);font:inherit;font-size:12px}
+      .dsh-ol-cm .cm-panel.cm-search .cm-textfield::placeholder{color:var(--dsw-alias-label-secondary,GrayText);opacity:.75}
+      .dsh-ol-cm .cm-panel.cm-search .cm-textfield:focus{border-color:var(--dsw-alias-link,#89B4FA);box-shadow:0 0 0 2px color-mix(in srgb,var(--dsw-alias-link,#89B4FA) 16%,transparent)}
+      .dsh-ol-cm .cm-panel.cm-search .cm-button{height:28px;padding:3px 9px;border:1px solid color-mix(in srgb,currentColor 12%,transparent);border-radius:6px;background:color-mix(in srgb,currentColor 5%,transparent);color:var(--dsw-alias-label-primary,CanvasText);font:inherit;font-size:11.5px;cursor:pointer}
+      .dsh-ol-cm .cm-panel.cm-search .cm-button:hover{background:var(--dsw-alias-interactive-bg-hover,color-mix(in srgb,currentColor 8%,transparent));border-color:color-mix(in srgb,currentColor 20%,transparent)}
+      .dsh-ol-cm .cm-panel.cm-search label{display:inline-flex;align-items:center;gap:4px;min-height:28px;color:var(--dsw-alias-label-secondary,GrayText);font-size:11px;white-space:nowrap;cursor:pointer;user-select:none}
+      .dsh-ol-cm .cm-panel.cm-search input[type=checkbox]{width:13px;height:13px;margin:0;accent-color:var(--dsw-alias-link,#89B4FA)}
+      .dsh-ol-cm .cm-panel.cm-search button[name=close]{top:7px;right:8px;width:26px;height:26px;border-radius:6px;color:var(--dsw-alias-label-secondary,GrayText);font-size:18px;line-height:24px}
+      .dsh-ol-cm .cm-panel.cm-search button[name=close]:hover{background:var(--dsw-alias-interactive-bg-hover,color-mix(in srgb,currentColor 8%,transparent));color:var(--dsw-alias-label-primary,CanvasText)}
+      .dsh-ol-cm .cm-searchMatch{background:color-mix(in srgb,var(--dsw-alias-link,#89B4FA) 22%,transparent);outline:1px solid color-mix(in srgb,var(--dsw-alias-link,#89B4FA) 30%,transparent)}
+      .dsh-ol-cm .cm-searchMatch-selected{background:color-mix(in srgb,var(--dsw-alias-state-warn-primary,#F9E2AF) 32%,transparent);outline-color:var(--dsw-alias-state-warn-primary,#F9E2AF)}
       .dsh-ol-cm-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;opacity:.5;pointer-events:none}
       .dsh-ol-cm-fallback{flex:1;min-height:0;width:100%;box-sizing:border-box;border:0;outline:none;resize:none;background:transparent;color:inherit;font-family:var(--ds-font-family-code,ui-monospace,SFMono-Regular,monospace);font-size:var(--dsh-content-font-size,var(--dsh-code-font-size,12px));line-height:calc(22px + var(--dsh-content-font-delta,0px));padding:6px 12px 14px;tab-size:2;white-space:pre;overflow:auto}
       .dsh-ol-cm-panel{min-height:480px;height:60vh;display:flex}
-      .dsh-ol-fa{display:flex;align-items:center;gap:3px;flex:none}
-      .dsh-ol-fa>button{font:inherit;font-size:10.5px;line-height:1;cursor:pointer;border-radius:5px;padding:4px 5px;min-height:22px;border:1px solid color-mix(in srgb,currentColor 14%,transparent);color:inherit;background:transparent;white-space:nowrap}
-      .dsh-ol-fa>button:hover{background:color-mix(in srgb,currentColor 7%,transparent)}
+      .dsh-ol-fa{display:flex;align-items:center;gap:4px;flex:none}
+      .dsh-ol-fa>button{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary,GrayText);cursor:pointer}
+      .dsh-ol-fa>button:hover{background:var(--dsw-alias-interactive-bg-hover,color-mix(in srgb,currentColor 8%,transparent));color:var(--dsw-alias-label-primary,CanvasText)}
+      .dsh-ol-fa>button:focus-visible{outline:1px solid var(--dsw-alias-link,#89B4FA);outline-offset:-1px}
+      .dsh-ol-fa>button>svg{display:block;width:15px;height:15px}
       .dsh-ol-fa-dialog{width:380px;max-width:calc(100vw - 32px);box-sizing:border-box;border:1px solid var(--dsw-alias-border-l3,color-mix(in srgb,currentColor 16%,transparent));border-radius:12px;padding:18px;background:Canvas;color:CanvasText;font:inherit;box-shadow:0 18px 50px #0004}
       .dsh-ol-fa-dialog::backdrop{background:#0006;backdrop-filter:blur(2px)}
       .dsh-ol-fa-dialog form{display:flex;flex-direction:column;gap:10px}
@@ -125,6 +144,22 @@ window.__ModuleLoader__.load({
       .dsh-ol-fa-actions button:hover:not(:disabled){background:color-mix(in srgb,currentColor 7%,transparent)}
       .dsh-ol-fa-actions button:disabled{opacity:.5;cursor:default}
       .dsh-ol-fa-actions button.primary{color:#fff;background:#138a59;border-color:#138a59}
+    `;
+
+    /** Compact the host file tree only while it is an Overleaf workspace column. */
+    const FILE_TREE_CSS = `
+      .dsh-ol-flipped [data-files-root]>div:first-child{min-height:40px;box-sizing:border-box;padding:0 8px 0 12px;gap:4px;border-bottom:1px solid color-mix(in srgb,currentColor 9%,transparent)}
+      .dsh-ol-flipped [data-files-root]>div:first-child::before{content:'项目文件';flex:1;min-width:0;color:var(--dsw-alias-label-primary,CanvasText);font-size:12px;font-weight:600;line-height:28px}
+      .dsh-ol-flipped [data-files-root]>div:first-child>[data-path-label]{display:none}
+      .dsh-ol-flipped [data-files-root]>div:first-child button[data-files-reload]{flex:none;width:28px;height:28px;padding:6px;border-radius:6px;color:var(--dsw-alias-label-secondary,GrayText)}
+      .dsh-ol-flipped [data-files-root]>div:first-child button[data-files-reload]:hover{background:var(--dsw-alias-interactive-bg-hover,color-mix(in srgb,currentColor 8%,transparent));color:var(--dsw-alias-label-primary,CanvasText)}
+      .dsh-ol-flipped [data-files-root]>div:first-child>span:last-child{flex:none;align-items:center;height:28px;box-sizing:border-box;border:1px solid color-mix(in srgb,currentColor 12%,transparent);border-radius:6px;overflow:hidden}
+      .dsh-ol-flipped [data-files-root]>div:first-child>span:last-child button{box-sizing:border-box;height:26px;border-radius:0;color:var(--dsw-alias-label-secondary,GrayText)}
+      .dsh-ol-flipped [data-files-root]>div:first-child>span:last-child button:hover{background:var(--dsw-alias-interactive-bg-hover,color-mix(in srgb,currentColor 8%,transparent));color:var(--dsw-alias-label-primary,CanvasText)}
+      .dsh-ol-flipped [data-files-root] li[data-files-entry]>button{min-height:28px;padding:4px 8px;border-radius:6px;color:var(--dsw-alias-label-primary,CanvasText);font-size:12.5px}
+      .dsh-ol-flipped [data-files-root] li[data-files-entry]>button:hover{background:var(--dsw-alias-interactive-bg-hover,color-mix(in srgb,currentColor 7%,transparent))}
+      .dsh-ol-flipped [data-files-root] li[data-files-entry]>button:focus-visible{outline:1px solid var(--dsw-alias-link,#89B4FA);outline-offset:-1px}
+      .dsh-ol-flipped [data-files-root] li[data-files-entry]>button>svg{flex:none;width:15px;height:15px;color:var(--dsw-alias-label-secondary,GrayText)}
     `;
 
     /** The sidebar region: same DOM-section technique as dsh-remote-ssh. */
@@ -684,6 +719,15 @@ window.__ModuleLoader__.load({
         phase === 'loading' ? h('div', { className: 'dsh-ol-cm-loading' }, '正在加载编辑器…') : null);
     });
 
+    function CreateIcon({ folder }) {
+      return h('svg', { width: 15, height: 15, viewBox: '0 0 24 24', fill: 'none',
+        stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': 'true' },
+      folder
+        ? h('path', { d: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z' })
+        : h('path', { d: 'M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7zM14 2v5h5' }),
+      h('path', { d: 'M12 11v6M9 14h6' }));
+    }
+
     /**
      * New file / new folder controls in the built-in Files tab header.
      *
@@ -815,8 +859,8 @@ window.__ModuleLoader__.load({
         ref: wrapperRef,
         className: 'dsh-ol-fa',
       },
-      h('button', { type: 'button', 'data-ol-action': 'file', title: '新建文件', 'aria-label': '新建文件' }, '＋文件'),
-      h('button', { type: 'button', 'data-ol-action': 'folder', title: '新建文件夹', 'aria-label': '新建文件夹' }, '＋目录'),
+      h('button', { type: 'button', 'data-ol-action': 'file', title: '新建文件', 'aria-label': '新建文件' }, h(CreateIcon, { folder: false })),
+      h('button', { type: 'button', 'data-ol-action': 'folder', title: '新建文件夹', 'aria-label': '新建文件夹' }, h(CreateIcon, { folder: true })),
       h('dialog', {
         ref: dialogRef,
         className: 'dsh-ol-fa-dialog',
@@ -1862,7 +1906,7 @@ window.__ModuleLoader__.load({
      */
     function createOverleafLayout(ctx) {
       const style = document.createElement('style');
-      style.textContent = LAYOUT_CSS + EDITOR_CSS;
+      style.textContent = LAYOUT_CSS + EDITOR_CSS + FILE_TREE_CSS;
       document.head.append(style);
 
       let wanted = false;
