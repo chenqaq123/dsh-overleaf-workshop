@@ -698,6 +698,23 @@ await test('the vendored editor chunk has the module-loader contract', () => {
   assert.ok(client.includes('.cm-ol-comment{color:#6C7086'));
   assert.ok(client.includes("content:'项目文件'") && client.includes('LAYOUT_CSS + EDITOR_CSS + FILE_TREE_CSS'),
     'the Overleaf file column keeps its compact toolbar');
+  assert.ok(client.includes('data-dsh-file-icon') && client.includes('data-dsh-file-kind=tex')
+    && client.includes('data-dsh-file-kind=folder'),
+    'the Overleaf file tree uses semantic file icons');
+  assert.ok(client.includes('decorateFileTreeRows()') && client.includes('childList: true'),
+    'file-tree icons refresh after native tree updates');
+  assert.ok(client.includes("addEventListener('contextmenu', onContextMenu, true)")
+    && client.includes('creationDirectory(root, row)')
+    && client.includes('dsh-overleaf-create')
+    && client.includes('data-dsh-create-kind=file')
+    && client.includes('data-dsh-create-kind=folder'),
+    'the file tree supports contextual creation actions');
+  assert.ok(client.includes('targetDirectory') && client.includes('directoryRel')
+    && client.includes('targetDirectory.length === 0 ? name'),
+    'creation dialogs compose paths under the selected directory');
+  assert.ok(client.includes('closeContextMenu()') && client.includes("event.key === 'Escape'")
+    && client.includes("removeEventListener('scroll', onScroll, true)"),
+    'context menus clean up on dismissal and plugin disposal');
   assert.ok(client.includes('.dsh-ol-cm .cm-panel.cm-search{display:flex'),
     'search controls use the Harness dark theme');
 });

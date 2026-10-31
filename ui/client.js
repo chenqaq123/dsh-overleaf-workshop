@@ -156,11 +156,138 @@ window.__ModuleLoader__.load({
       .dsh-ol-flipped [data-files-root]>div:first-child>span:last-child{flex:none;align-items:center;height:28px;box-sizing:border-box;border:1px solid color-mix(in srgb,currentColor 12%,transparent);border-radius:6px;overflow:hidden}
       .dsh-ol-flipped [data-files-root]>div:first-child>span:last-child button{box-sizing:border-box;height:26px;border-radius:0;color:var(--dsw-alias-label-secondary,GrayText)}
       .dsh-ol-flipped [data-files-root]>div:first-child>span:last-child button:hover{background:var(--dsw-alias-interactive-bg-hover,color-mix(in srgb,currentColor 8%,transparent));color:var(--dsw-alias-label-primary,CanvasText)}
-      .dsh-ol-flipped [data-files-root] li[data-files-entry]>button{min-height:28px;padding:4px 8px;border-radius:6px;color:var(--dsw-alias-label-primary,CanvasText);font-size:12.5px}
+      .dsh-ol-flipped [data-files-root] li[data-files-entry]>button{display:flex;align-items:center;min-height:30px;padding:4px 8px;border-radius:7px;color:var(--dsw-alias-label-primary,CanvasText);font-size:12.5px;line-height:20px;transition:background-color .12s ease,color .12s ease}
       .dsh-ol-flipped [data-files-root] li[data-files-entry]>button:hover{background:var(--dsw-alias-interactive-bg-hover,color-mix(in srgb,currentColor 7%,transparent))}
       .dsh-ol-flipped [data-files-root] li[data-files-entry]>button:focus-visible{outline:1px solid var(--dsw-alias-link,#89B4FA);outline-offset:-1px}
-      .dsh-ol-flipped [data-files-root] li[data-files-entry]>button>svg{flex:none;width:15px;height:15px;color:var(--dsw-alias-label-secondary,GrayText)}
+      .dsh-ol-flipped [data-files-root] li[data-files-entry]>button>svg:not([data-dsh-file-icon]){display:none}
+      .dsh-ol-flipped [data-files-root] li[data-files-entry]>button>[data-dsh-file-icon]{display:inline-flex;align-items:center;justify-content:center;flex:none;width:19px;height:20px;margin-right:7px;color:var(--dsw-alias-label-secondary,GrayText)}
+      .dsh-ol-flipped [data-files-root] li[data-files-entry]>button>[data-dsh-file-icon] svg{display:block;width:18px;height:18px;overflow:visible}
+      .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-file-kind=folder]>button>[data-dsh-file-icon]{color:var(--dsw-alias-state-idle-primary,#CBA6F7)}
+      .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-file-kind=tex]>button>[data-dsh-file-icon],
+      .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-file-kind=bib]>button>[data-dsh-file-icon]{color:var(--dsw-alias-link,#89B4FA)}
+      .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-file-kind=sty]>button>[data-dsh-file-icon]{color:var(--dsw-alias-state-idle-primary,#CBA6F7)}
+      .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-file-kind=pdf]>button>[data-dsh-file-icon]{color:var(--dsw-alias-state-error-primary,#F38BA8)}
+      .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-file-kind=image]>button>[data-dsh-file-icon]{color:var(--dsw-alias-state-success-primary,#A6E3A1)}
+      .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-file-kind=log]>button>[data-dsh-file-icon]{color:var(--dsw-alias-state-warn-primary,#F9E2AF)}
+      .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-file-kind=folder][data-dsh-expanded=true]>button>[data-dsh-file-icon]{color:var(--dsw-alias-link,#89B4FA)}
+      .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-file-kind=folder]>button{font-weight:570}
+      .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-file-kind=folder][data-dsh-expanded=true]>button{color:var(--dsw-alias-label-primary,CanvasText)}
+      .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-selected=true]>button{background:color-mix(in srgb,var(--dsw-alias-state-idle-primary,#CBA6F7) 13%,transparent);color:var(--dsw-alias-label-primary,CanvasText)}
+      .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-selected=true]>button>[data-dsh-file-icon]{filter:saturate(1.08)}
+      @media (prefers-reduced-motion:reduce){.dsh-ol-flipped [data-files-root] li[data-files-entry]>button{transition:none}}
+      .dsh-ol-tree-menu{position:fixed;z-index:1000;min-width:168px;padding:5px;border:1px solid var(--dsw-alias-border-l3,color-mix(in srgb,currentColor 16%,transparent));border-radius:9px;background:var(--dsw-alias-bg-elevated,Canvas);color:var(--dsw-alias-label-primary,CanvasText);box-shadow:0 12px 30px #0005;font-size:12px}
+      .dsh-ol-tree-menu button{display:flex;align-items:center;gap:8px;width:100%;min-height:30px;padding:5px 8px;border:0;border-radius:6px;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+      .dsh-ol-tree-menu button:hover,.dsh-ol-tree-menu button:focus-visible{background:var(--dsw-alias-interactive-bg-hover,color-mix(in srgb,currentColor 8%,transparent));outline:none}
+      .dsh-ol-tree-menu button>[data-dsh-file-icon]{width:18px;height:18px;color:var(--dsw-alias-label-secondary,GrayText)}
+      .dsh-ol-tree-menu button>[data-dsh-file-icon] svg{display:block;width:17px;height:17px}
+      .dsh-ol-tree-menu button[data-dsh-create-kind=file]>[data-dsh-file-icon]{color:var(--dsw-alias-link,#89B4FA)}
+      .dsh-ol-tree-menu button[data-dsh-create-kind=folder]>[data-dsh-file-icon]{color:var(--dsw-alias-state-idle-primary,#CBA6F7)}
     `;
+
+    const FILE_TREE_ICON_NS = 'http://www.w3.org/2000/svg';
+    const FILE_TREE_EXTENSIONS = {
+      tex: 'tex', ltx: 'tex', clo: 'tex', ins: 'tex',
+      bib: 'bib', bst: 'bib',
+      sty: 'sty', cls: 'sty', def: 'sty', tikz: 'sty', pgf: 'sty',
+      pdf: 'pdf', log: 'log',
+      png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', svg: 'image',
+      webp: 'image', eps: 'image', tif: 'image', tiff: 'image',
+    };
+
+    function fileTreeKind(row) {
+      if (row.getAttribute('data-files-entry') === 'directory'
+        || row.getAttribute('data-files-entry') === 'folder') return 'folder';
+      const path = String(row.getAttribute('data-files-path') ?? '').replace(/\\/g, '/');
+      const name = path.slice(path.lastIndexOf('/') + 1).toLowerCase();
+      const dot = name.lastIndexOf('.');
+      return dot < 0 ? 'file' : FILE_TREE_EXTENSIONS[name.slice(dot + 1)] ?? 'file';
+    }
+
+    function appendSvgPath(svg, d, options = {}) {
+      const path = document.createElementNS(FILE_TREE_ICON_NS, 'path');
+      path.setAttribute('d', d);
+      path.setAttribute('fill', options.fill ?? 'none');
+      path.setAttribute('stroke', options.stroke ?? 'currentColor');
+      path.setAttribute('stroke-width', options.width ?? '1.55');
+      path.setAttribute('stroke-linecap', 'round');
+      path.setAttribute('stroke-linejoin', 'round');
+      svg.append(path);
+    }
+
+    function normalizeTreePath(value) {
+      return String(value ?? '').replace(/\\/g, '/').replace(/\/+/gu, '/').replace(/^\.\//u, '').replace(/\/+$/u, '');
+    }
+
+    function relativeTreePath(rootValue, absoluteValue) {
+      const root = normalizeTreePath(rootValue);
+      const absolute = normalizeTreePath(absoluteValue);
+      if (root.length === 0 || absolute === root) return absolute === root ? '' : undefined;
+      return absolute.startsWith(`${root}/`) ? absolute.slice(root.length + 1) : undefined;
+    }
+
+    function creationDirectory(rootValue, row) {
+      if (row === undefined || row === null) return '';
+      const relative = relativeTreePath(rootValue, row.getAttribute('data-files-path'));
+      if (relative === undefined) return undefined;
+      const entry = row.getAttribute('data-files-entry');
+      if (entry === 'directory' || entry === 'folder') return relative;
+      const slash = relative.lastIndexOf('/');
+      return slash < 0 ? '' : relative.slice(0, slash);
+    }
+
+    function makeFileTreeIcon(kind, expanded) {
+      const holder = document.createElement('span');
+      holder.setAttribute('data-dsh-file-icon', '');
+      holder.setAttribute('aria-hidden', 'true');
+      const svg = document.createElementNS(FILE_TREE_ICON_NS, 'svg');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.setAttribute('fill', 'none');
+      if (kind === 'folder') {
+        appendSvgPath(svg, expanded
+          ? 'M3 7.5a2 2 0 0 1 2-2h4.2l1.7 2H21a1.5 1.5 0 0 1 1.4 2L20 17.8a2 2 0 0 1-1.9 1.4H4.5a2 2 0 0 1-2-2z'
+          : 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z');
+        if (expanded) appendSvgPath(svg, 'M4 10h17.6', { width: '1.2' });
+      } else if (kind === 'image') {
+        appendSvgPath(svg, 'M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z');
+        appendSvgPath(svg, 'm5 17 4-4 3 3 2-2 5 5M8 9.2h.01');
+      } else {
+        appendSvgPath(svg, 'M6 3.5h8l4 4v13H6a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2z');
+        appendSvgPath(svg, 'M14 3.5v4h4', { width: '1.2' });
+        if (kind === 'pdf') appendSvgPath(svg, 'M7.5 16h7.5M7.5 18.5h5', { width: '1.2' });
+        else if (kind === 'log') appendSvgPath(svg, 'M7.5 12h7M7.5 15h7M7.5 18h4', { width: '1.2' });
+        else if (kind === 'bib') appendSvgPath(svg, 'M8 12h.01M8 15h.01M8 18h.01M10.5 12h4.5M10.5 15h4.5M10.5 18h3', { width: '1.2' });
+        else if (kind === 'tex') appendSvgPath(svg, 'M8 12h6M8 15h4M8 18h6', { width: '1.2' });
+        else if (kind === 'sty') appendSvgPath(svg, 'M8 13h6M8 16h4', { width: '1.2' });
+      }
+      holder.append(svg);
+      return holder;
+    }
+
+    function decorateFileTreeRows() {
+      document.querySelectorAll('.dsh-ol-flipped [data-files-root] li[data-files-entry]').forEach((row) => {
+        const button = row.querySelector(':scope > button');
+        if (button === null) return;
+        const kind = fileTreeKind(row);
+        const expanded = button.getAttribute('aria-expanded') === 'true'
+          || row.getAttribute('aria-expanded') === 'true';
+        const selected = button.getAttribute('aria-current') === 'page'
+          || button.getAttribute('aria-selected') === 'true'
+          || row.classList.contains('selected')
+          || row.classList.contains('active');
+        row.dataset.dshFileKind = kind;
+        row.dataset.dshExpanded = expanded ? 'true' : 'false';
+        row.dataset.dshSelected = selected ? 'true' : 'false';
+        const existing = button.querySelector(':scope > [data-dsh-file-icon]');
+        if (existing !== null
+          && existing.dataset.dshFileIconKind === kind
+          && existing.dataset.dshFileIconExpanded === (expanded ? 'true' : 'false')) return;
+        if (existing !== null) existing.remove();
+        const icon = makeFileTreeIcon(kind, expanded);
+        icon.dataset.dshFileIconKind = kind;
+        icon.dataset.dshFileIconExpanded = expanded ? 'true' : 'false';
+        button.prepend(icon);
+      });
+    }
 
     /** The sidebar region: same DOM-section technique as dsh-remote-ssh. */
     const SIDEBAR_CSS = `
@@ -738,6 +865,7 @@ window.__ModuleLoader__.load({
     function FilesActions({ absolutePath, api, openInEditor }) {
       const [bound, setBound] = useState(undefined);
       const [kind, setKind] = useState(undefined);
+      const [targetDirectory, setTargetDirectory] = useState('');
       const [error, setError] = useState('');
       const [busy, setBusy] = useState(false);
       const wrapperRef = useRef(undefined);
@@ -765,8 +893,9 @@ window.__ModuleLoader__.load({
         if (dialogRef.current?.open === true) dialogRef.current.close();
       };
 
-      const open = (nextKind) => {
+      const open = (nextKind, directoryRel = '') => {
         setKind(nextKind);
+        setTargetDirectory(normalizeTreePath(directoryRel));
         setError('');
         if (inputRef.current !== undefined) inputRef.current.value = '';
         requestAnimationFrame(() => {
@@ -784,14 +913,15 @@ window.__ModuleLoader__.load({
 
       const submit = async () => {
         if (busyRef.current || kind === undefined) return;
-        let path = String(inputRef.current?.value ?? '').trim().replace(/\\/g, '/').replace(/^(?:\.\/)+/u, '');
-        if (kind === 'folder') path = path.replace(/\/+$/u, '');
-        if (path.length === 0 || path.startsWith('/') || /^[A-Za-z]:\//u.test(path)
-          || path.includes('\0') || path.split('/').some((part) => part === '' || part === '.' || part === '..')
-          || path === '.overleaf' || path.startsWith('.overleaf/')) {
-          setError('请输入工作区内的相对路径，例如 sections/intro.tex。');
+        let name = String(inputRef.current?.value ?? '').trim().replace(/\\/g, '/').replace(/^(?:\.\/)+/u, '');
+        if (kind === 'folder') name = name.replace(/\/+$/u, '');
+        if (name.length === 0 || name.startsWith('/') || /^[A-Za-z]:\//u.test(name)
+          || name.includes('\0') || name.split('/').some((part) => part === '' || part === '.' || part === '..')
+          || name === '.overleaf' || name.startsWith('.overleaf/')) {
+          setError('请输入文件名或目录名，例如 intro.tex。');
           return;
         }
+        const path = targetDirectory.length === 0 ? name : `${targetDirectory}/${name}`;
         busyRef.current = true;
         setBusy(true);
         setError('');
@@ -838,20 +968,27 @@ window.__ModuleLoader__.load({
         };
         const onCancel = (event) => { event.preventDefault(); close(); };
         const onMouseDown = (event) => { if (event.target === dialog) close(); };
+        const onCreateRequest = (event) => {
+          const detail = event.detail;
+          if (detail?.absolutePath !== absolutePath || !['file', 'folder'].includes(detail.kind)) return;
+          open(detail.kind, detail.directoryRel);
+        };
         const onInput = () => setError('');
         wrapper.addEventListener('click', onAction);
         form?.addEventListener('submit', onSubmit);
         dialog?.addEventListener('cancel', onCancel);
         dialog?.addEventListener('mousedown', onMouseDown);
+        wrapper.addEventListener('dsh-overleaf-create', onCreateRequest);
         inputRef.current?.addEventListener('input', onInput);
         return () => {
           wrapper.removeEventListener('click', onAction);
           form?.removeEventListener('submit', onSubmit);
           dialog?.removeEventListener('cancel', onCancel);
           dialog?.removeEventListener('mousedown', onMouseDown);
+          wrapper.removeEventListener('dsh-overleaf-create', onCreateRequest);
           inputRef.current?.removeEventListener('input', onInput);
         };
-      }, [api, absolutePath, bound, kind, openInEditor]);
+      }, [api, absolutePath, bound, kind, openInEditor, targetDirectory]);
 
       if (bound !== true) return null;
 
@@ -867,11 +1004,11 @@ window.__ModuleLoader__.load({
       },
       h('form', { ref: formRef, method: 'dialog' },
         h('div', { className: 'dsh-ol-fa-title' }, kind === 'folder' ? '新建文件夹' : '新建文件'),
-        h('div', { className: 'dsh-ol-fa-sub' }, absolutePath),
+        h('div', { className: 'dsh-ol-fa-sub' }, targetDirectory === '' ? absolutePath : `${absolutePath}/${targetDirectory}`),
         h('input', {
           ref: inputRef,
           spellCheck: false,
-          placeholder: kind === 'folder' ? '例如 sections' : '例如 sections/intro.tex',
+          placeholder: kind === 'folder' ? '例如 figures' : '例如 intro.tex',
         }),
         error !== '' ? h('div', { className: 'dsh-ol-fa-error' }, error) : null,
         h('div', { className: 'dsh-ol-fa-actions' },
@@ -1977,7 +2114,12 @@ window.__ModuleLoader__.load({
           frame = next;
           if (frame !== undefined) {
             frameObserver = new MutationObserver(() => schedule());
-            frameObserver.observe(frame, { attributes: true, attributeFilter: ['style', 'class'] });
+            frameObserver.observe(frame, {
+              attributes: true,
+              attributeFilter: ['style', 'class', 'aria-expanded', 'aria-current', 'aria-selected'],
+              childList: true,
+              subtree: true,
+            });
             if (typeof ResizeObserver === 'function') {
               resizeObserver?.disconnect();
               resizeObserver = new ResizeObserver(() => schedule());
@@ -2011,6 +2153,7 @@ window.__ModuleLoader__.load({
           frame.style.setProperty('--dsh-ol-flipped-handle', handle);
         }
         frame.classList.add('dsh-ol-flipped');
+        decorateFileTreeRows();
         if (grip.parentElement !== frame) frame.append(grip);
         grip.style.left = handle;
         grip.style.display = rightbar > 0 && !frame.hasAttribute('data-rightbar-fullscreen')
@@ -2809,6 +2952,84 @@ window.__ModuleLoader__.load({
             }, 60);
           };
 
+          let contextMenu;
+          let contextTarget;
+
+          const closeContextMenu = () => {
+            contextMenu?.remove();
+            contextMenu = undefined;
+            contextTarget = undefined;
+          };
+
+          const dispatchCreate = (kind) => {
+            const target = contextTarget;
+            closeContextMenu();
+            if (target === undefined) return;
+            const wrapper = target.pane.querySelector('.dsh-ol-fa');
+            if (wrapper === null) return;
+            wrapper.dispatchEvent(new CustomEvent('dsh-overleaf-create', {
+              detail: { absolutePath: target.root, kind, directoryRel: target.directoryRel },
+            }));
+          };
+
+          const showContextMenu = (event, target) => {
+            closeContextMenu();
+            contextTarget = target;
+            contextMenu = document.createElement('div');
+            contextMenu.className = 'dsh-ol-tree-menu';
+            contextMenu.setAttribute('role', 'menu');
+            for (const [kind, label, folder] of [['file', '在此处新建文件', false], ['folder', '在此处新建文件夹', true]]) {
+              const button = document.createElement('button');
+              button.type = 'button';
+              button.dataset.dshCreateKind = kind;
+              button.setAttribute('role', 'menuitem');
+              button.append(makeFileTreeIcon(folder ? 'folder' : 'file', false), document.createTextNode(label));
+              button.addEventListener('click', (clickEvent) => {
+                clickEvent.preventDefault();
+                clickEvent.stopPropagation();
+                dispatchCreate(kind);
+              });
+              contextMenu.append(button);
+            }
+            document.body.append(contextMenu);
+            const margin = 6;
+            const rect = contextMenu.getBoundingClientRect();
+            const left = Math.min(event.clientX, window.innerWidth - rect.width - margin);
+            const top = Math.min(event.clientY, window.innerHeight - rect.height - margin);
+            contextMenu.style.left = `${Math.max(margin, left)}px`;
+            contextMenu.style.top = `${Math.max(margin, top)}px`;
+            contextMenu.querySelector('button')?.focus();
+          };
+
+          const onContextMenu = (event) => {
+            const target = event.target instanceof Element ? event.target : undefined;
+            const rootElement = target?.closest('[data-files-root]');
+            if (rootElement === null || rootElement === undefined) return;
+            const pane = rootElement.closest('[data-dockkit-pane]');
+            const service = sidebarService();
+            const sessionId = service?.mounted?.getSnapshot?.();
+            if (pane === null || typeof sessionId !== 'string' || !isKnownSession(sessionId)) return;
+            const tabs = service.tabsIn?.(sessionId) ?? [];
+            const filesTab = tabs.find((tab) => tab.kind === 'files');
+            if (filesTab === undefined || paneOfTab(filesTab.id) !== pane) return;
+            const root = rootElement.getAttribute('data-files-root') ?? sessionDirs()[sessionId];
+            if (typeof root !== 'string' || root.length === 0) return;
+            const row = target.closest('li[data-files-entry][data-files-path]');
+            const directoryRel = creationDirectory(root, row);
+            if (directoryRel === undefined || pane.querySelector('.dsh-ol-fa') === null) return;
+            event.preventDefault();
+            event.stopPropagation();
+            showContextMenu(event, { pane, root, directoryRel });
+          };
+
+          const onDocumentClick = (event) => {
+            if (contextMenu !== undefined && !(event.target instanceof Node && contextMenu.contains(event.target))) {
+              closeContextMenu();
+            }
+          };
+          const onKeyDown = (event) => { if (event.key === 'Escape') closeContextMenu(); };
+          const onScroll = () => closeContextMenu();
+
           const onClick = (event) => {
             if (event.button !== undefined && event.button !== 0) return;
             const target = event.target instanceof Element ? event.target : undefined;
@@ -2877,7 +3098,18 @@ window.__ModuleLoader__.load({
             if (createdSplit) scheduleSplitRatio(sessionId);
           };
           document.addEventListener('click', onClick, true);
-          return () => document.removeEventListener('click', onClick, true);
+          document.addEventListener('contextmenu', onContextMenu, true);
+          document.addEventListener('click', onDocumentClick, true);
+          document.addEventListener('keydown', onKeyDown, true);
+          document.addEventListener('scroll', onScroll, true);
+          return () => {
+            document.removeEventListener('click', onClick, true);
+            document.removeEventListener('contextmenu', onContextMenu, true);
+            document.removeEventListener('click', onDocumentClick, true);
+            document.removeEventListener('keydown', onKeyDown, true);
+            document.removeEventListener('scroll', onScroll, true);
+            closeContextMenu();
+          };
         };
         ctx.effect(() => installFilePaneGuard(), 'dsh-overleaf: file rows open in the editor pane');
 
