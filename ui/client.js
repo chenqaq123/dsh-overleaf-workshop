@@ -4,7 +4,7 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require('react');
     const h = React.createElement;
-    const { useState, useEffect, useCallback, useRef, useLayoutEffect, useImperativeHandle, forwardRef } = React;
+    const { useState, useEffect, useCallback, useRef, useLayoutEffect, useImperativeHandle, useSyncExternalStore, forwardRef } = React;
     const PANEL = 'overleaf';
     const POLL_MS = 1500;
 
@@ -342,6 +342,13 @@ window.__ModuleLoader__.load({
 
     const SOURCE_CSS = `
       .dsh-ol-src{display:flex;flex-direction:column;height:100%;min-height:0;font-size:13px;color:var(--dsw-alias-label-primary,inherit)}
+      .dsh-ol-source-workspace{display:flex;flex:1;min-height:0;min-width:0;container-type:inline-size}
+      .dsh-ol-source-editor{display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;overflow:hidden}
+      .dsh-ol-inline-pdf{display:flex;flex-direction:column;width:45%;min-width:0;min-height:0;border-left:1px solid var(--dsw-alias-border-l3,#45475a)}
+      .dsh-ol-inline-pdf-body{flex:1;min-height:0;min-width:0;position:relative;overflow:hidden;display:flex;flex-direction:column}
+      .dsh-ol-source-workspace[data-pdf-open=true] .dsh-ol-source-editor{flex-basis:55%}
+      .dsh-ol-source-workspace.narrow{flex-direction:column}
+      .dsh-ol-source-workspace.narrow .dsh-ol-inline-pdf{width:100%;height:45%;flex:none;border-left:0;border-top:1px solid var(--dsw-alias-border-l3,#45475a)}
       .dsh-ol-src-bar{display:flex;align-items:center;flex-wrap:wrap;row-gap:4px;gap:6px;padding:8px 10px 6px;flex:none;min-width:0}
       .dsh-ol-src-name{font-family:ui-monospace,SFMono-Regular,monospace;font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
       .dsh-ol-src .dsh-ol-dirty{color:#e0a100;font-size:10px;line-height:1}
@@ -391,6 +398,29 @@ window.__ModuleLoader__.load({
       try { localStorage.setItem(SESSION_MAP_KEY, JSON.stringify(map)); } catch { /* Storage is optional. */ }
     };
     const isKnownSession = (sessionId) => typeof sessionDirs()[sessionId] === 'string';
+
+    /** One persisted PDF visibility preference for every source tab in a workspace. */
+    const pdfVisibilityStores = new Map();
+    function pdfVisibilityStore(workspace) {
+      if (pdfVisibilityStores.has(workspace)) return pdfVisibilityStores.get(workspace);
+      const key = `dsh-overleaf:pdf-visible:${encodeURIComponent(String(workspace))}`;
+      let visible = true;
+      try { visible = localStorage.getItem(key) !== 'false'; } catch { /* Storage is optional. */ }
+      const listeners = new Set();
+      const store = {
+        getSnapshot: () => visible,
+        subscribe: (listener) => { listeners.add(listener); return () => listeners.delete(listener); },
+        set: (value) => {
+          const next = typeof value === 'function' ? value(visible) : value;
+          if (next === visible) return;
+          visible = next;
+          try { localStorage.setItem(key, String(visible)); } catch { /* Keep the in-memory preference. */ }
+          for (const listener of listeners) listener();
+        },
+      };
+      pdfVisibilityStores.set(workspace, store);
+      return store;
+    }
 
     const DRAFT_PREFIX = 'dsh-overleaf:draft:';
     const workspaceIndexes = new Map();
@@ -1017,16 +1047,69 @@ window.__ModuleLoader__.load({
             busy ? '创建中…' : '创建')))));
     }
 
-    /**
-     * Editable LaTeX source tab in the right Sidebar.
-     *
-     * Registered only for files inside a workspace this plugin opened (see
-     * `isKnownSession`), so `.tex` files elsewhere keep the built-in preview.
-     * Reads and writes go through the plugin's RPCs: a save lands in the local
-     * workspace exactly like an agent or external-editor write, and the live
-     * session pushes it to Overleaf as an OT update.
-     */
-    function SourceTab({ useTabInfo, api }) {
+    /** Read only changed PDF bytes through the host's authorized file service. */
+    function pdfReader(ctx) {
+      return async (sessionId, signal, version) => {
+        const files = ctx.get?.('remote.workspaceFiles') ?? ctx.get?.('remote')?.workspaceFiles;
+        if (files === undefined) throw new Error('DSH 文件读取服务尚未就绪。');
+        const metadata = await files.stat(sessionId, 'output.pdf', signal);
+        if (!metadata.ok) throw new Error(metadata.error.message);
+        if (version !== undefined && metadata.value.version === version) return undefined;
+        const result = await files.readBytes(sessionId, 'output.pdf', {}, signal);
+        if (!result.ok) throw new Error(result.error.message);
+        return result.value;
+      };
+    }
+
+    /** Render the host's PDF body inside our tab, without creating another dock pane. */
+    function InlinePdf({ useTabInfo, renderSlot, readPdf, sessionId, revision, visible, onClose }) {
+      const [content, setContent] = useState(undefined);
+      const [error, setError] = useState('');
+      const [attempt, setAttempt] = useState(0);
+      const version = useRef(undefined);
+      const scrollport = useRef(null);
+      useEffect(() => {
+        if (!visible) return undefined;
+        const controller = new AbortController();
+        let running = false;
+        const refresh = async () => {
+          if (running || controller.signal.aborted) return;
+          running = true;
+          try {
+            const result = await readPdf(sessionId, controller.signal, version.current);
+            if (controller.signal.aborted) return;
+            if (result !== undefined) {
+              version.current = result.version;
+              setContent({ kind: 'bytes', data: result.data });
+            }
+            setError('');
+          } catch (e) { if (!controller.signal.aborted) setError(errorText(e)); }
+          finally { running = false; }
+        };
+        void refresh();
+        const timer = setInterval(() => { void refresh(); }, 2500);
+        return () => { controller.abort(); clearInterval(timer); };
+      }, [readPdf, sessionId, revision, visible, attempt]);
+      const bindScrollport = useCallback((node) => { scrollport.current = node; }, []);
+      return h('section', { className: 'dsh-ol-inline-pdf', 'aria-label': 'PDF 预览' },
+        h('div', { className: 'dsh-ol-src-bar' }, h('span', null, 'output.pdf'),
+          h('span', { className: 'dsh-ol-src-spacer' }),
+          h('button', { onClick: () => { version.current = undefined; setAttempt((value) => value + 1); } }, '刷新'),
+          h('button', { onClick: onClose, title: '收起 PDF，保留源码编辑器' }, '收起')),
+        error ? h('div', { className: 'dsh-ol-src-note error', role: 'alert' }, error) : null,
+        h('div', { className: 'dsh-ol-inline-pdf-body' }, content === undefined
+          ? h('div', { className: 'dsh-ol-src-empty' }, error ? 'PDF 加载失败，请重试。' : '正在加载 PDF…')
+          : renderSlot('overleaf.source.pdf', {
+            resourceAddress: fileAddress(sessionId, 'output.pdf'), content, wrap: false,
+            scrollportRef: bindScrollport,
+          }, { entryKey: '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/pdf',
+            hookContext: useTabInfo,
+            fallback: h('div', { className: 'dsh-ol-src-empty' }, 'DSH PDF 预览组件尚未就绪。'),
+          })));
+    }
+
+    /** Editable source and optional PDF share one DSH tab and its lifetime. */
+    function SourceTab({ useTabInfo, api, renderSlot, readPdf }) {
       const { tab } = useTabInfo();
       const target = parseFileAddress(tab.contentId);
       const sessionId = target?.sessionId;
@@ -1043,6 +1126,18 @@ window.__ModuleLoader__.load({
       const [notice, setNotice] = useState('');
       const [compile, setCompile] = useState(undefined);
       const [hasPdf, setHasPdf] = useState(false);
+      const pdfVisibility = pdfVisibilityStore(workspaceKey);
+      const pdfOpen = useSyncExternalStore(pdfVisibility.subscribe, pdfVisibility.getSnapshot);
+      const setPdfOpen = pdfVisibility.set;
+      const workspaceRef = useRef(null);
+      const [narrow, setNarrow] = useState(false);
+      useEffect(() => {
+        const node = workspaceRef.current;
+        if (node === null) return undefined;
+        const observer = new ResizeObserver(([entry]) => setNarrow(entry.contentRect.width < 650));
+        observer.observe(node);
+        return () => observer.disconnect();
+      }, []);
       const [syncEnded, setSyncEnded] = useState(false);
       /** {path, startedAt}: a save whose push is still settling, polled below. */
       const [pushWatch, setPushWatch] = useState(undefined);
@@ -1325,11 +1420,7 @@ window.__ModuleLoader__.load({
         finally { setBusy(''); }
       };
 
-      const openPdf = async () => {
-        if (sessionId === undefined) return;
-        try { await tab.actions.openResource(fileAddress(sessionId, 'output.pdf'), { preferNewPane: true }); }
-        catch (e) { setError(errorText(e)); }
-      };
+      const openPdf = () => { setPdfOpen((value) => !value); };
 
       /**
        * End (or resume) the realtime session without leaving the workspace.
@@ -1387,7 +1478,7 @@ window.__ModuleLoader__.load({
             busy === 'save' ? '保存中…' : '保存'),
           h('button', { className: 'primary', disabled: busy !== '', onClick: () => { void compileNow(); } },
             busy === 'compile' ? '编译中…' : '编译'),
-          hasPdf ? h('button', { disabled: busy !== '', onClick: () => { void openPdf(); } }, 'PDF') : null,
+          hasPdf ? h('button', { 'aria-pressed': pdfOpen, onClick: openPdf }, pdfOpen ? '收起 PDF' : '分屏 PDF') : null,
           h('button', { disabled: busy !== '', title: syncEnded
             ? '重新建立与 Overleaf 的实时连接'
             : '推送当前改动后关闭实时连接，停止监听文件；文件保留在本机',
@@ -1406,7 +1497,9 @@ window.__ModuleLoader__.load({
           outline.length === 0 ? h('div', { className: 'dsh-ol-src-empty' }, '当前文件还没有章节命令。')
             : outline.map((item) => h('button', { key: `${item.line}:${item.title}`, style: { paddingLeft: `${6 + item.level * 12}px` },
               title: `${item.kind} · 第 ${item.line} 行`, onClick: () => editorRef.current?.revealLine(item.line) }, item.title || '(未命名章节)'))) : null,
-        h(CodeEditor, {
+        h('div', { className: `dsh-ol-source-workspace${narrow ? ' narrow' : ''}`, ref: workspaceRef,
+          'data-pdf-open': hasPdf && pdfOpen },
+        h('div', { className: 'dsh-ol-source-editor' }, h(CodeEditor, {
           ref: editorRef,
           value: file?.text ?? '',
           readOnly: file === undefined,
@@ -1421,7 +1514,9 @@ window.__ModuleLoader__.load({
             setNotice('');
             setPushWatch(undefined);
           },
-        }),
+        })),
+        hasPdf && pdfOpen ? h(InlinePdf, { useTabInfo, renderSlot, readPdf, sessionId,
+          revision: compile, visible: tab.visible !== false, onClose: () => setPdfOpen(false) }) : null),
         errors.length > 0 ? h('div', { className: 'dsh-ol-src-errors' }, errors.map((item, index) => h('button', {
           key: index, className: 'dsh-ol-src-error', onClick: () => jump(item) },
         item.file !== null && item.file !== undefined
@@ -2825,6 +2920,18 @@ window.__ModuleLoader__.load({
           try { info = await api('prepare', { local_path: localDir }); }
           catch (error) { console.warn('[dsh-overleaf] prepare failed:', error); }
 
+          // Resuming a conversation skips the `open` RPC that normally restarts
+          // live sync, so after a Harness restart the workspace would sit frozen:
+          // edits pile up locally and the remote drifts. Restart it here.
+          if (info?.bound === true) {
+            try {
+              const status = await api('live', { local_path: localDir, action: 'status' });
+              if (status.phase === 'idle' || status.phase === 'stopped') {
+                await api('live', { local_path: localDir, action: 'start' });
+              }
+            } catch (error) { console.warn('[dsh-overleaf] live sync did not restart:', error); }
+          }
+
           if (sidebar === undefined) {
             console.warn('[dsh-overleaf] sidebarRight service is unavailable; skipping the auto-open');
             return;
@@ -3143,8 +3250,35 @@ window.__ModuleLoader__.load({
             ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
               name: 'sidebar.right.pane.tab',
               key: 'dsh-overleaf/source',
-              inject: () => ({ api }),
+              children: {
+                'overleaf.source.pdf': {
+                  kind: 'keyed', scope: 'session',
+                  inject: { hooks: { tabInfo: (_standard, useTabInfo) => useTabInfo } },
+                },
+              },
+              inject: () => ({ api, readPdf: pdfReader(ctx) }),
             }, SourceTab)), 'dsh-overleaf: source tab body');
+            // The document slot is owned by the host. Reuse its PDF registration
+            // in our own slot instead of redeclaring that global child slot.
+            ctx.effect(() => {
+              const host = ctx.slots.hostFace();
+              let entry;
+              let dispose;
+              const sync = () => {
+                const next = host.entriesOfSlot('sidebar.right.tab.document')
+                  .find((item) => item.options.key === '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/pdf');
+                if (next === entry) return;
+                dispose?.();
+                entry = next;
+                dispose = next === undefined ? undefined : ctx.slots.register({
+                  name: 'overleaf.source.pdf', key: next.options.key,
+                  locale: next.locale, store: next.store, inject: next.inject,
+                }, next.component);
+              };
+              const unsubscribe = host.subscribe('sidebar.right.tab.document', sync);
+              sync();
+              return () => { unsubscribe(); dispose?.(); };
+            }, 'dsh-overleaf: embedded PDF renderer');
           } catch (error) {
             noteSetupError('右侧栏标签页注册失败', error);
           }
