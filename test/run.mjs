@@ -6,6 +6,7 @@
  */
 
 import assert from 'node:assert/strict';
+import { runInNewContext } from 'node:vm';
 import { mkdtempSync, readFileSync, writeFileSync, mkdirSync, rmSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
@@ -136,6 +137,16 @@ await test('push creates missing remote folders', async () => {
   assert.equal(folder.name, 'figures');
   const upload = mock.state.uploads.at(-1);
   assert.equal(upload.name, 'deep.tex');
+});
+
+await test('upload omits _csrf from the multipart body the strict server validates', async () => {
+  // Current Overleaf answers 400 "Unrecognized key: _csrf at body" for unknown
+  // multipart fields; the mock mirrors that, so this only passes without it.
+  const before = mock.state.uploads.length;
+  const result = await client.uploadFile('p1', 'root0', 'csrf-check.tex', 'content\n');
+  assert.equal(result.success, true);
+  assert.equal(mock.state.uploads.length, before + 1);
+  assert.equal(mock.state.uploads.at(-1).name, 'csrf-check.tex');
 });
 
 await test('compile success downloads pdf and log', async () => {
@@ -351,6 +362,34 @@ await test('a version gap forces a re-join', () => {
 });
 
 await socket.close();
+
+await test('a server rejection surfaces the real reason instead of a joinProject timeout', async () => {
+  // Current Overleaf has no client-driven joinProject event: it answers a bad
+  // session with `connectionRejected` and drops the socket. The old client sat
+  // out 20 s plus 8 s and reported a misleading joinProject timeout.
+  mock.state.rejectConnection = 'invalid session';
+  const started = Date.now();
+  const refused = new RealtimeSocket({ client, projectId: 'p1', connectTimeoutMs: 600 });
+  await assert.rejects(refused.connect(), /重新粘贴 Cookie/);
+  assert.ok(Date.now() - started < 5000, `rejection must be immediate, took ${Date.now() - started}ms`);
+  mock.state.rejectConnection = 'not authorized';
+  const forbidden = new RealtimeSocket({ client, projectId: 'p1', connectTimeoutMs: 600 });
+  await assert.rejects(forbidden.connect(), /没有该项目的访问权限/);
+  mock.state.rejectConnection = false;
+});
+
+await test('a server without the projectId handshake still connects through the v1 emit', async () => {
+  // Old self-hosted servers ignore `?projectId=` and only answer the
+  // client-driven `joinProject` emit with an ack.
+  mock.state.failingTree = true;
+  const legacy = new RealtimeSocket({ client, projectId: 'p1', connectTimeoutMs: 600 });
+  const joined = await legacy.connect();
+  assert.equal(joined.scheme, 'v1');
+  assert.equal(joined.project._id, 'p1');
+  assert.equal(joined.permissionsLevel, 'owner');
+  await legacy.close();
+  mock.state.failingTree = false;
+});
 
 const canonicalDir = join(scratch, 'canonical');
 mkdirSync(canonicalDir, { recursive: true });
@@ -717,6 +756,59 @@ await test('the vendored editor chunk has the module-loader contract', () => {
     'context menus clean up on dismissal and plugin disposal');
   assert.ok(client.includes('.dsh-ol-cm .cm-panel.cm-search{display:flex'),
     'search controls use the Harness dark theme');
+});
+
+await test('PDF visibility is shared by workspace, persisted, and isolated from other projects', () => {
+  const source = readFileSync(new URL('../ui/client.js', import.meta.url), 'utf8');
+  const start = source.indexOf('    const pdfVisibilityStores = new Map();');
+  const end = source.indexOf('\n    const DRAFT_PREFIX', start);
+  const saved = new Map();
+  const localStorage = { getItem: (key) => saved.get(key) ?? null, setItem: (key, value) => saved.set(key, value) };
+  const load = () => runInNewContext(`${source.slice(start, end)}; pdfVisibilityStore`, { localStorage });
+  const getStore = load();
+  const first = getStore('/demo/project');
+  const otherFile = getStore('/demo/project');
+  const otherProject = getStore('/demo/other');
+  let notifications = 0;
+  const unsubscribe = otherFile.subscribe(() => { notifications += 1; });
+  assert.equal(first.getSnapshot(), true);
+  first.set(false);
+  assert.equal(otherFile.getSnapshot(), false);
+  assert.equal(getStore('/demo/project').getSnapshot(), false, 'newly opened files inherit the preference');
+  assert.equal(otherProject.getSnapshot(), true);
+  assert.equal(notifications, 1);
+  assert.equal(load()('/demo/project').getSnapshot(), false, 'reload restores the preference');
+  otherFile.set((value) => !value);
+  assert.equal(first.getSnapshot(), true);
+  assert.equal(notifications, 2);
+  unsubscribe();
+  first.set(false);
+  assert.equal(notifications, 2);
+});
+
+await test('inline PDF reader fetches changed bytes and preserves file-service errors', async () => {
+  const source = readFileSync(new URL('../ui/client.js', import.meta.url), 'utf8');
+  const start = source.indexOf('    function pdfReader(ctx) {');
+  const end = source.indexOf('\n    /** Render the host', start);
+  const pdfReader = runInNewContext(`(${source.slice(start, end).trim()})`);
+  let reads = 0;
+  const signal = new AbortController().signal;
+  const data = new Uint8Array([37, 80, 68, 70]);
+  const files = {
+    stat: async (session, path, receivedSignal) => {
+      assert.equal(session, 'demo'); assert.equal(path, 'output.pdf'); assert.equal(receivedSignal, signal);
+      return { ok: true, value: { version: 'v2' } };
+    },
+    readBytes: async () => { reads += 1; return { ok: true, value: { version: 'v2', data } }; },
+  };
+  const read = pdfReader({ get: (name) => name === 'remote.workspaceFiles' ? files : undefined });
+  assert.equal(await read('demo', signal, 'v2'), undefined);
+  assert.equal(reads, 0, 'unchanged PDF must not reload the viewer');
+  assert.equal((await read('demo', signal, 'v1')).data, data);
+  assert.equal(reads, 1);
+  files.stat = async () => ({ ok: false, error: { message: 'permission denied' } });
+  await assert.rejects(read('demo', signal), /permission denied/);
+  assert.equal(reads, 1, 'failed authorization must not fall through to reading bytes');
 });
 
 mock.server.close();

@@ -41,6 +41,8 @@ export function createMock() {
     dropEcho: false,
     compileLog: '',
     failingTree: false,
+    /** When truthy, the handshake pushes `connectionRejected` + disconnect instead of joining. */
+    rejectConnection: false,
     /** Live document text and version, keyed by doc id. */
     docs: new Map([
       ['doc1', { version: 3, text: '\\documentclass{article}\n\\begin{document}\nHello 世界\n\\end{document}\n' }],
@@ -168,7 +170,13 @@ export function createMock() {
       const sid = `sock${++state.socketCounter}`;
       state.sockets.set(sid, { queue: [] });
       enqueue(sid, '1::');
-      if (projectId !== null && !state.failingTree) {
+      if (state.rejectConnection) {
+        // The current real-time service refuses the session this way: an event
+        // naming the reason, followed by the disconnect packet.
+        enqueue(sid, `5:::${JSON.stringify({ name: 'connectionRejected',
+          args: [{ message: state.rejectConnection }] })}`);
+        enqueue(sid, '0::');
+      } else if (projectId !== null && !state.failingTree) {
         enqueue(sid, `5:::${JSON.stringify({ name: 'joinProjectResponse',
           args: [{ project: state.tree, publicId: `pub-${sid}`, permissionsLevel: 'owner', protocolVersion: 2 }] })}`);
       }
@@ -207,6 +215,11 @@ export function createMock() {
     }
     if (path === '/project/p1/upload' && request.method === 'POST') {
       if (!cookieOk) return json(302, {});
+      // Current Overleaf rejects unknown keys in the multipart body, matching
+      // the real server's "Unrecognized key: \"_csrf\"" validation error.
+      if (body.includes(Buffer.from('name="_csrf"'))) {
+        return json(400, { error: 'Validation error: Unrecognized key: "_csrf" at "body"', statusCode: 400 });
+      }
       const name = url.searchParams.get('qqfilename');
       const folderId = url.searchParams.get('folder_id');
       state.uploads.push({ name, folderId, bytes: body.length });
