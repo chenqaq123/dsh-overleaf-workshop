@@ -7,6 +7,7 @@ window.__ModuleLoader__.load({
     const { useState, useEffect, useCallback, useRef, useLayoutEffect, useImperativeHandle, useSyncExternalStore, forwardRef } = React;
     const PANEL = 'overleaf';
     const POLL_MS = 1500;
+    const removedWorkspaceSessions = new Map();
 
     const CSS = `
       .dsh-ol-page{height:100%;overflow:auto;box-sizing:border-box;padding:calc(var(--dsh-frame-top-clearance,24px) + 24px) 36px 48px;color:inherit;font-family:inherit}
@@ -291,36 +292,70 @@ window.__ModuleLoader__.load({
 
     /** The sidebar region: same DOM-section technique as dsh-remote-ssh. */
     const SIDEBAR_CSS = `
-      .dsh-ol-sb{flex:none;display:flex;flex-direction:column;min-height:0;max-height:46%;margin-top:6px;padding-top:4px;border-top:1px solid color-mix(in srgb,currentColor 10%,transparent)}
+      .dsh-ol-sb{flex:none;display:flex;flex-direction:column;min-width:0;margin-top:12px;padding:0;border:0}
       .dsh-ol-native-hidden{display:none!important}
-      .dsh-ol-sb-head{display:flex;align-items:center;gap:6px;padding:6px;border:0;background:none;color:inherit;font:inherit;font-size:12px;font-weight:600;text-align:left;cursor:pointer;opacity:.82;border-radius:6px}
-      .dsh-ol-sb-head:hover{background:var(--dsw-alias-interactive-bg-hover,color-mix(in srgb,currentColor 7%,transparent))}
-      .dsh-ol-sb-manage{margin-left:auto;font-size:11px;font-weight:400;opacity:.55;border:0;background:none;color:inherit;cursor:pointer;padding:2px 4px;border-radius:4px}
-      .dsh-ol-sb-manage:hover{opacity:1;background:var(--dsw-alias-interactive-bg-hover,color-mix(in srgb,currentColor 7%,transparent))}
-      .dsh-ol-sb-body{overflow:auto;min-height:0;padding:2px 0 6px}
-      .dsh-ol-sb-row{display:flex;flex-direction:column;gap:2px;width:100%;border:0;background:none;color:inherit;font:inherit;text-align:left;padding:5px 6px;border-radius:6px;cursor:pointer;min-height:26px;min-width:0}
-      .dsh-ol-sb-row:hover{background:var(--dsw-alias-interactive-bg-hover,color-mix(in srgb,currentColor 7%,transparent))}
-      .dsh-ol-sb-main{display:flex;align-items:flex-start;gap:7px;min-width:0}
-      .dsh-ol-sb-actions{display:flex;gap:2px;margin-left:13px;flex-wrap:wrap;opacity:.55}
-      .dsh-ol-sb-row:hover .dsh-ol-sb-actions,.dsh-ol-sb-row:focus-within .dsh-ol-sb-actions{opacity:1}
-      .dsh-ol-sb-act{border:0;background:none;color:inherit;font:inherit;font-size:10.5px;line-height:1.4;opacity:.6;padding:2px 5px;border-radius:4px;cursor:pointer;white-space:nowrap}
-      .dsh-ol-sb-act:hover:not(:disabled){opacity:1;background:var(--dsw-alias-interactive-bg-hover,color-mix(in srgb,currentColor 7%,transparent))}
-      .dsh-ol-sb-act:disabled{opacity:.3;cursor:default}
-      .dsh-ol-sb-act.end{color:#e56767}
+      .dsh-overleaf-flat-workspace-menu [data-context-menu] [role=separator]{display:none}
+      .dsh-ol-sb-head{display:flex;align-items:center;gap:4px;min-height:36px;font:inherit;font-size:14px;font-weight:400;line-height:20px;color:var(--dsw-alias-label-tertiary,inherit)}
+      .dsh-ol-sb-section-toggle{position:relative;display:flex;align-items:center;flex:1;min-width:0;height:28px;box-sizing:border-box;border:0;background:none;color:inherit;font:inherit;font-size:14px;font-weight:400;line-height:20px;text-align:left;padding:4px 0;cursor:pointer;opacity:1}
+      .dsh-ol-sb-section-toggle>span{position:relative;left:-1px}
+      .dsh-ol-sb-section-toggle svg{position:absolute;left:-17px;width:14px;height:14px;transition:transform .12s}
+      .dsh-ol-sb-section-toggle[aria-expanded=true] svg{transform:rotate(90deg)}
+      .dsh-ol-sb-body{flex:none;min-width:0;padding:2px 0 6px}
+      .dsh-ol-sb-row{box-sizing:border-box;display:flex;align-items:center;gap:6px;position:relative;width:100%;height:32px;padding:0 8px 0 9px;border:0;border-radius:12px;background:none;color:inherit;font:inherit;font-size:14px;cursor:pointer;min-width:0;outline:none}
+      .dsh-ol-sb-row:hover,.dsh-ol-sb-row:focus-visible,.dsh-ol-sb-row.menu-open{background:var(--dsw-alias-interactive-bg-hover,color-mix(in srgb,currentColor 8%,transparent))}
+      .dsh-ol-sb-leading{position:relative;display:grid;place-items:center;flex:none;width:16px;height:24px;padding:0;border:0;background:none;color:var(--dsw-alias-label-secondary,inherit);cursor:pointer}
+      .dsh-ol-sb-leading>svg{width:16px;height:16px}
+      .dsh-ol-sb-leading .dsh-ol-sb-arrow{display:none;width:14px;height:14px}
+      .dsh-ol-sb-leading[aria-expanded=true] .dsh-ol-sb-arrow{transform:rotate(90deg)}
+      .dsh-ol-sb-row:hover .dsh-ol-sb-folder,.dsh-ol-sb-row:focus-within .dsh-ol-sb-folder{display:none}
+      .dsh-ol-sb-row:hover .dsh-ol-sb-arrow,.dsh-ol-sb-row:focus-within .dsh-ol-sb-arrow{display:block}
+      .dsh-ol-sb-status{position:absolute;right:-2px;bottom:3px;width:5px;height:5px;border-radius:50%;background:#8a8f98;box-shadow:0 0 0 2px var(--dsw-alias-background-primary,#1e1e2e)}
+      .dsh-ol-sb-status.connected{background:#86efac}.dsh-ol-sb-status.connecting,.dsh-ol-sb-status.reconnecting{background:#e2b93b}.dsh-ol-sb-status.error{background:#e56767}
+      .dsh-ol-sb-title{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .dsh-ol-sb-row>.dsh-ol-sb-title{flex:1}
+      .dsh-ol-sb-row:hover>.dsh-ol-sb-title,.dsh-ol-sb-row:focus-within>.dsh-ol-sb-title,.dsh-ol-sb-row.menu-open>.dsh-ol-sb-title{padding-right:78px}
+      .dsh-ol-sb-actions{position:absolute;right:8px;display:flex;align-items:center;gap:2px;opacity:0;pointer-events:none}
+      .dsh-ol-sb-row:hover .dsh-ol-sb-actions,.dsh-ol-sb-row:focus-within .dsh-ol-sb-actions,.dsh-ol-sb-row.menu-open .dsh-ol-sb-actions{opacity:1;pointer-events:auto}
+      .dsh-ol-sb-icon{display:grid;place-items:center;flex:none;width:24px;height:24px;padding:0;border:0;border-radius:4px;background:none;color:var(--dsw-alias-label-secondary,inherit);font:inherit;cursor:pointer;opacity:.75}
+      .dsh-ol-sb-icon svg{width:16px;height:16px}
+      .dsh-ol-sb-icon:hover,.dsh-ol-sb-icon:focus-visible{opacity:1;background:var(--dsw-alias-interactive-bg-hover,color-mix(in srgb,currentColor 9%,transparent));outline:none}
+      .dsh-ol-sb-icon:disabled{opacity:.3;cursor:default}.dsh-ol-sb-icon.connected{color:#86efac}
+      .dsh-ol-sb-sessions{display:flex;flex-direction:column;gap:0;margin:2px 0 4px;min-width:0}
+      .dsh-ol-sb-session{position:relative;box-sizing:border-box;display:flex;align-items:center;gap:8px;width:100%;height:32px;padding:0 8px 0 34px;border:0;border-radius:12px;background:none;color:inherit;font:inherit;font-size:14px;text-align:left;cursor:pointer;min-width:0}
+      .dsh-ol-sb-session .dsh-ol-sb-title{flex:1}
+      .dsh-ol-sb-session-actions{position:absolute;right:8px;display:flex;align-items:center;opacity:0;pointer-events:none}
+      .dsh-ol-sb-session:hover .dsh-ol-sb-session-actions,.dsh-ol-sb-session:focus-within .dsh-ol-sb-session-actions,.dsh-ol-sb-session.menu-open .dsh-ol-sb-session-actions{opacity:1;pointer-events:auto}
+      .dsh-ol-sb-session:hover .dsh-ol-sb-time,.dsh-ol-sb-session:focus-within .dsh-ol-sb-time,.dsh-ol-sb-session.menu-open .dsh-ol-sb-time{visibility:hidden}
+      .dsh-ol-sb-session:hover .dsh-ol-sb-title,.dsh-ol-sb-session:focus-within .dsh-ol-sb-title,.dsh-ol-sb-session.menu-open .dsh-ol-sb-title{padding-right:26px}
+      .dsh-ol-sb-time{flex:none;font-size:11px;opacity:.55}
+      .dsh-ol-sb-session:hover,.dsh-ol-sb-session:focus-visible,.dsh-ol-sb-session.current,.dsh-ol-sb-session.menu-open{background:var(--dsw-alias-interactive-bg-hover,color-mix(in srgb,currentColor 8%,transparent));outline:none}
       .dsh-ol-sb-note{font-size:11px;line-height:1.5;margin:2px 6px 6px;padding:5px 7px;border-radius:6px;overflow-wrap:anywhere}
-      .dsh-ol-sb-note.ok{color:#238155;background:#23815510;border:1px solid #23815533}
-      .dsh-ol-sb-note.error{color:#c34c4c;background:#c34c4c12;border:1px solid #c34c4c33}
-      .dsh-ol-sb-note.warn{color:#a97400;background:#e0a10012;border:1px solid #e0a10033}
-      .dsh-ol-sb-dot{width:6px;height:6px;border-radius:50%;flex:none;margin-top:6px;background:#8a8f98}
-      .dsh-ol-sb-dot.connected{background:#86efac}.dsh-ol-sb-dot.reconnecting{background:#e2b93b}
-      .dsh-ol-sb-dot.error{background:#e56767}
-      .dsh-ol-sb-text{display:flex;flex-direction:column;min-width:0;gap:1px}
-      .dsh-ol-sb-title{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-      .dsh-ol-sb-sub{font-size:11px;opacity:.55;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-      .dsh-ol-sb-chev{flex:none;width:18px;text-align:center;opacity:.5;transition:transform .12s;display:inline-block}
-      .dsh-ol-sb-chev.open{transform:rotate(90deg)}
-      .dsh-ol-sb-empty{font-size:12px;opacity:.55;padding:8px;line-height:1.6}
-      .dsh-ol-sb-empty button{border:0;background:none;color:inherit;font:inherit;text-decoration:underline;cursor:pointer;padding:0;opacity:.9}
+      .dsh-ol-sb-note.ok{color:#238155;background:#23815510}.dsh-ol-sb-note.error{color:#e56767;background:#e5676710}
+      .dsh-ol-sb-empty{font-size:12px;opacity:.55;padding:8px;line-height:1.6}.dsh-ol-sb-empty button{border:0;background:none;color:inherit;font:inherit;text-decoration:underline;cursor:pointer;padding:0}
+      /* Match the native Workspaces row, header and icon metrics. */
+      .dsh-ol-sb-head{box-sizing:border-box;height:36px;min-height:36px;padding:0 1px 0 12px}
+      .dsh-ol-sb-section-toggle{font-size:14px;line-height:20px}
+      .dsh-ol-sb-head>.dsh-ol-sb-icon{width:28px;height:28px;margin:0}
+      .dsh-ol-sb-row,.dsh-ol-sb-session{height:32px;border-radius:var(--dsw-radius-md,12px);border-inline:var(--dsh-sidebar-paint-inset,3px) solid transparent;background-clip:padding-box;font-size:14px}
+      .dsh-ol-sb-row{padding:0 8px;padding-inline-start:calc(var(--dsh-sidebar-row-padding,12px) - var(--dsh-sidebar-paint-inset,3px));gap:var(--dsh-sidebar-label-gap,6px)}
+      .dsh-ol-sb-title{font-size:14px;line-height:20px}
+      .dsh-ol-sb-leading{height:20px;width:16px}
+      .dsh-ol-sb-row>.dsh-ol-sb-title,.dsh-ol-sb-row:hover>.dsh-ol-sb-title,.dsh-ol-sb-row:focus-within>.dsh-ol-sb-title,.dsh-ol-sb-row.menu-open>.dsh-ol-sb-title{padding-right:0}
+      .dsh-ol-sb-actions,.dsh-ol-sb-session-actions{position:static;flex:none;align-items:center;gap:13px;display:none;opacity:1;pointer-events:auto}
+      .dsh-ol-sb-actions{height:20px}
+      .dsh-ol-sb-row:hover .dsh-ol-sb-actions,.dsh-ol-sb-row:focus-within .dsh-ol-sb-actions,.dsh-ol-sb-row.menu-open .dsh-ol-sb-actions,.dsh-ol-sb-session:hover .dsh-ol-sb-session-actions,.dsh-ol-sb-session:focus-within .dsh-ol-sb-session-actions,.dsh-ol-sb-session.menu-open .dsh-ol-sb-session-actions{display:inline-flex}
+      .dsh-ol-sb-icon{display:inline-flex;justify-content:center;align-items:center;width:24px;height:24px;margin:-4px;border-radius:var(--dsw-radius-xs,4px);font-size:13.3333px;opacity:1;color:var(--dsw-alias-label-tertiary,inherit)}
+      .dsh-ol-sb-icon svg{width:16px;height:16px}
+      .dsh-ol-sb-icon svg[data-icon=dsw-icon-new-chat-outline-regular]{width:14px;height:14px}
+      .dsh-ol-sb-session{gap:0;padding:0 8px;padding-inline-start:calc(var(--dsh-sidebar-row-padding,12px) - var(--dsh-sidebar-paint-inset,3px) + 16px + var(--dsh-sidebar-label-gap,6px))}
+      .dsh-ol-sb-session .dsh-ol-sb-title{margin-right:6px}
+      .dsh-ol-sb-session:hover .dsh-ol-sb-title,.dsh-ol-sb-session:focus-within .dsh-ol-sb-title,.dsh-ol-sb-session.menu-open .dsh-ol-sb-title{padding-right:0}
+      .dsh-ol-sb-time{font-size:10px;line-height:16px;color:var(--dsw-alias-label-tertiary,inherit);opacity:1}
+      .dsh-ol-sb-session:hover .dsh-ol-sb-time,.dsh-ol-sb-session:focus-within .dsh-ol-sb-time,.dsh-ol-sb-session.menu-open .dsh-ol-sb-time{display:none}
+      @media(hover:none){.dsh-ol-sb-actions,.dsh-ol-sb-session-actions{display:inline-flex}.dsh-ol-sb-row>.dsh-ol-sb-title{padding-right:0}}
+      .dsh-ol-sb-confirm{width:360px;max-width:calc(100vw - 40px);box-sizing:border-box;padding:24px;border:1px solid color-mix(in srgb,currentColor 14%,transparent);border-radius:16px;background:var(--dsw-alias-background-secondary,#272735);color:var(--dsw-alias-label-primary,#cdd6f4);font:inherit;box-shadow:0 16px 60px #0006}
+      .dsh-ol-sb-confirm::backdrop{background:#0007}.dsh-ol-sb-confirm h2{font-size:17px;font-weight:600;margin:0 0 16px}.dsh-ol-sb-confirm p{font-size:13px;line-height:1.6;overflow-wrap:anywhere}.dsh-ol-sb-confirm-name{font-weight:500}.dsh-ol-sb-confirm-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:24px}.dsh-ol-sb-confirm-actions button{padding:7px 14px;border:1px solid color-mix(in srgb,currentColor 20%,transparent);border-radius:8px;background:none;color:inherit;font:inherit;font-size:13px;cursor:pointer}.dsh-ol-sb-confirm-actions button.danger{background:#c64747;color:white;border-color:#c64747}.dsh-ol-sb-confirm-actions button:disabled{opacity:.5;cursor:default}
+      @media(hover:none){.dsh-ol-sb-actions{opacity:1;pointer-events:auto}.dsh-ol-sb-row>.dsh-ol-sb-title{padding-right:78px}}
     `;
 
     const phaseLabel = { idle: '未启动', connecting: '连接中', connected: '实时同步中',
@@ -1219,12 +1254,16 @@ window.__ModuleLoader__.load({
       useEffect(() => {
         if (sessionId === undefined || tab.visible === false) return undefined;
         let cancelled = false;
-        void api('live', { ...where(), action: 'status' })
-          .then((status) => {
-            if (!cancelled) setSyncEnded(status.phase === 'stopped' || status.phase === 'idle');
-          })
-          .catch(() => {});
-        return () => { cancelled = true; };
+        const update = (status) => {
+          if (!cancelled) setSyncEnded(!['connected', 'connecting', 'reconnecting'].includes(status.phase));
+        };
+        const changed = (event) => {
+          const dir = localPath ?? sessionDirs()[sessionId];
+          if (dir !== undefined && sameDir(dir, event.detail?.localDir)) update(event.detail);
+        };
+        window.addEventListener('dsh-overleaf:live', changed);
+        void api('live', { ...where(), action: 'status' }).then(update).catch(() => {});
+        return () => { cancelled = true; window.removeEventListener('dsh-overleaf:live', changed); };
       }, [api, sessionId, path, tab.visible, localPath]);
 
       // One workspace-level poller batches all open source tabs into a single
@@ -1536,6 +1575,17 @@ window.__ModuleLoader__.load({
         const result = await ctx.connection.rpc.call('/api', `overleafUi/${method}`,
           { args: request === undefined ? {} : { request } }, signal);
         if (!result.ok) throw new Error(result.error.message);
+        if (method === 'list' || method === 'overview') {
+          for (const workspace of result.value.workspaces) {
+            removedWorkspaceSessions.set(workspace.localDir, new Set(workspace.removedSessionIds ?? []));
+          }
+        }
+        if (method === 'forgetSession') {
+          removedWorkspaceSessions.set(result.value.localDir, new Set(result.value.removedSessionIds));
+        }
+        if (method === 'live' && ['start', 'stop', 'pause', 'resume'].includes(request?.action)) {
+          window.dispatchEvent(new CustomEvent('dsh-overleaf:live', { detail: result.value }));
+        }
         return result.value;
       };
     }
@@ -1852,6 +1902,7 @@ window.__ModuleLoader__.load({
       const [loginError, setLoginError] = useState('');
       const [openError, setOpenError] = useState('');
       const [editing, setEditing] = useState(undefined);
+      const [localPaths, setLocalPaths] = useState({});
       const [live, setLive] = useState({});
       // Session titles, recency and workspace membership live in client stores;
       // bump the render when either changes so the list never goes stale.
@@ -1910,8 +1961,11 @@ window.__ModuleLoader__.load({
       });
       const onOpen = (project) => run(`open:${project.id}`, async () => {
         const primary = data?.primary ?? 'https://www.overleaf.com';
-        const result = await api('open', { base_url: primary, project_id: project.id, project_name: project.name });
-        setNotice(`已打开 ${project.name}。正在恢复最近的会话与编辑区…`);
+        const existing = data.workspaces.find((item) => item.server === primary && item.projectId === project.id);
+        const localPath = existing?.localDir ?? localPaths[project.id]?.trim();
+        const result = await api('open', { base_url: primary, project_id: project.id, project_name: project.name,
+          ...(localPath ? { local_path: localPath } : {}) });
+        setNotice(`已打开本地工作区 ${project.name}。可在侧边栏选择「连接」启动同步。`);
         if (result.workspaceId !== null && result.workspaceId !== undefined) {
           await enterWorkspace(result.workspaceId, result.localDir);
         }
@@ -1966,7 +2020,8 @@ window.__ModuleLoader__.load({
           ?? { localDir: editing, projectName: editing.split('/').pop(), server: data.primary, bound: true };
 
       const projectCard = h('div', { className: 'dsh-ol-card' },
-        h('h2', null, 'Overleaf 项目'),
+        h('h2', null, '从 Overleaf 项目创建本地工作区'),
+        h('p', { className: 'dsh-ol-muted' }, '首次下载论文到本地目录；打开后按需连接同步。多个对话共用这个目录。'),
         openError ? h('p', { className: 'dsh-ol-error' }, openError) : null,
         data.projects.length === 0
           ? h('div', { className: 'dsh-ol-empty' }, '没有可用项目。先在上方登录，或确认账号下有项目。')
@@ -1975,17 +2030,21 @@ window.__ModuleLoader__.load({
             h('div', { className: 'dsh-ol-row-head' },
               h('div', null,
                 h('div', { className: 'dsh-ol-title' }, project.name),
+                !data.workspaces.some((item) => item.server === data.primary && item.projectId === project.id)
+                  ? h('input', { placeholder: '本地绝对路径（留空使用默认目录）', value: localPaths[project.id] ?? '',
+                    'aria-label': `${project.name} 的本地工作区目录`, disabled: busy !== '',
+                    onChange: (event) => setLocalPaths((paths) => ({ ...paths, [project.id]: event.target.value })) }) : null,
                 h('div', { className: 'dsh-ol-sub' },
                   project.lastUpdated ? `最近更新 ${new Date(project.lastUpdated).toLocaleString()}` : project.id)),
               h('div', { className: 'dsh-ol-actions' },
                 h('button', { className: 'dsh-ol-primary', disabled: busy !== '',
                   onClick: () => { void onOpen(project); } },
-                busy === `open:${project.id}` ? '打开中…' : '打开为工作区')))))));
+                busy === `open:${project.id}` ? '打开中…' : data.workspaces.some((item) => item.server === data.primary && item.projectId === project.id) ? '打开本地工作区' : '创建本地工作区')))))));
 
       const workspaceCard = h('div', { className: 'dsh-ol-card' },
-        h('h2', null, '已打开的项目与会话'),
+        h('h2', null, '本地工作区与对话'),
         data.workspaces.length === 0
-          ? h('div', { className: 'dsh-ol-empty' }, '还没有打开过 Overleaf 项目。先在下方「Overleaf 项目」里打开一个。')
+          ? h('div', { className: 'dsh-ol-empty' }, '还没有本地工作区。先在下方选择已有 Overleaf 项目创建。')
           : h('div', { className: 'dsh-ol-rows' }, data.workspaces.map((workspace) => {
             const status = live[workspace.localDir];
             const phase = status?.phase ?? 'idle';
@@ -2004,16 +2063,16 @@ window.__ModuleLoader__.load({
                     `${phaseLabel[phase] ?? phase}${phase === 'connected' && collaborators > 0 ? ` · ${collaborators} 人在线` : ''}`),
                   h('button', { className: 'dsh-ol-primary', disabled: busy !== '' || !workspace.bound,
                     onClick: () => { void run(`enter:${workspace.localDir}`, () => openRecord(workspace)); } },
-                  openingLast ? '打开中…' : '打开最近会话'),
+                  openingLast ? '打开中…' : '打开工作区'),
                   h('button', { disabled: busy !== '' || !workspace.bound,
                     onClick: () => { void newSession(workspace); } },
                   busy === `new:${workspace.localDir}` ? '创建中…' : '新建会话'),
                   running
                     ? h('button', { disabled: busy !== '', onClick: () => { void stopLive(workspace); } },
-                      busy === `stop:${workspace.localDir}` ? '结束中…' : '结束同步')
+                      busy === `stop:${workspace.localDir}` ? '结束中…' : '断开连接')
                     : h('button', { disabled: busy !== '' || !workspace.bound,
                       onClick: () => { void startLive(workspace); } },
-                    busy === `start:${workspace.localDir}` ? '启动中…' : '启动同步'),
+                    busy === `start:${workspace.localDir}` ? '启动中…' : '连接并同步'),
                   h('button', { disabled: busy !== '' || !workspace.bound,
                     onClick: () => setEditing(workspace.localDir) }, '编辑'))),
               h('div', { className: 'dsh-ol-sessions' },
@@ -2022,7 +2081,7 @@ window.__ModuleLoader__.load({
                   : sessions.map((session) => h('button', {
                     key: session.id,
                     className: `dsh-ol-session${session.id === current ? ' current' : ''}`,
-                    title: session.blank === true ? '尚未发送消息的草稿会话' : sessionLabel(session),
+                    title: sessionLabel(session),
                     disabled: busy !== '' || !workspace.bound,
                     onClick: () => { void openSession(workspace, session); },
                   }, h('span', { className: 'dsh-ol-session-title' }, sessionLabel(session)),
@@ -2033,7 +2092,7 @@ window.__ModuleLoader__.load({
         h('div', { className: 'dsh-ol-inner' },
           h('div', { className: 'dsh-ol-header' },
             h('div', null, h('h1', null, 'Overleaf'), h('p', { className: 'dsh-ol-muted' },
-              '把 Overleaf 项目打开为本地工作区：实时双向同步、内置编辑器、编译与 PDF 预览，AI 的修改同样实时同步。')))),
+              '选择已有论文创建本地工作区，按需连接 Overleaf；在同一个工作区中用多个独立对话持续处理同一篇论文。')))),
         h('div', { className: 'dsh-ol-inner' },
           error ? h('p', { className: 'dsh-ol-error' }, error) : null,
           setupError !== '' ? h('p', { className: 'dsh-ol-error' }, setupError) : null,
@@ -2078,7 +2137,9 @@ window.__ModuleLoader__.load({
       if (workspace === undefined || list?.byId === undefined) return [];
       const archived = new Set(ctx.workspaces.list.getSnapshot?.().archivedSessionIds ?? []);
       const current = ctx.uiWorkspace?.selection?.getSnapshot?.().sessionId;
+      const removed = removedWorkspaceSessions.get(workspace.path) ?? new Set();
       return workspace.sessionIds
+        .filter((id) => !removed.has(id))
         .map((id) => list.byId[id])
         .filter((session) => session !== undefined && session.origin !== 'subagent' && !archived.has(session.id))
         .filter((session) => !session.blank || session.id === current)
@@ -2104,12 +2165,13 @@ window.__ModuleLoader__.load({
       // The Session catalog can still be loading right after launch. Fall back
       // to registry membership instead of creating another blank conversation.
       const archived = new Set(ctx.workspaces.list.getSnapshot?.().archivedSessionIds ?? []);
-      return workspace?.sessionIds?.find((id) => !archived.has(id));
+      const removed = removedWorkspaceSessions.get(localDir) ?? new Set();
+      return workspace?.sessionIds?.find((id) => !archived.has(id) && !removed.has(id));
     }
 
     /** Human label for a Session summary. */
     function sessionLabel(session) {
-      if (session.blank === true) return '新会话（草稿）';
+      if (session.blank === true) return '新会话';
       const title = typeof session.title === 'string' ? session.title.trim() : '';
       if (title.length > 0) return title;
       const displayed = typeof session.displayTitle === 'string' ? session.displayTitle.trim() : '';
@@ -2150,12 +2212,6 @@ window.__ModuleLoader__.load({
       let drag;
       /** Conversation width in the flipped layout; dragging the grip changes it. */
       let chatWidth = CHAT_WIDTH;
-      /** True while this plugin collapsed the native project sidebar for the three columns. */
-      let collapsedSidebar = false;
-      let collapseTimer;
-      let restoreTimer;
-      let lastCollapseToggle = 0;
-
       // The harness's own divider assumes the panel is on the right: dragging it
       // away from the panel's edge grows the centre. With the tracks swapped the
       // pointer moves the other way, so a small divider of our own moves the
@@ -2266,25 +2322,6 @@ window.__ModuleLoader__.load({
         if (disposed || active === wanted) return;
         wanted = active;
         if (!wanted) {
-          clearInterval(collapseTimer);
-          collapseTimer = undefined;
-          clearTimeout(restoreTimer);
-          restoreTimer = undefined;
-          const restore = collapsedSidebar;
-          collapsedSidebar = false;
-          // Leave the native project list as the user found it when they leave
-          // Overleaf, unless they expanded it themselves in the meantime. The
-          // width can settle a render after the class is removed, so check late.
-          if (restore) {
-            restoreTimer = setTimeout(() => {
-              restoreTimer = undefined;
-              if (disposed || wanted) return;
-              const width = document.querySelector('[class*="sidebarCol"]')?.getBoundingClientRect().width;
-              if (width === 0 && typeof ctx.layout?.toggleSidebar === 'function') {
-                try { ctx.layout.toggleSidebar(); } catch { /* the next project keeps it collapsed */ }
-              }
-            }, 900);
-          }
           frame?.classList.remove('dsh-ol-flipped');
           frame?.style.removeProperty('--dsh-ol-flipped-columns');
           frame?.style.removeProperty('--dsh-ol-flipped-handle');
@@ -2297,50 +2334,8 @@ window.__ModuleLoader__.load({
           hideGrip();
           return;
         }
-        clearTimeout(restoreTimer);
-        restoreTimer = undefined;
         apply();
-        // Entering or returning to an Overleaf Session always starts with the
-        // file tree as the left column.
-        collapseSidebar();
-      };
-
-      /** One collapse attempt; uses the native track width, which updates first. */
-      const tryCollapse = () => {
-        if (disposed || !wanted) return;
-        if (frame === undefined) frame = document.querySelector('[class*="centerCol"]')?.parentElement;
-        const parsed = frame === undefined ? undefined : parse(frame.style.gridTemplateColumns);
-        const width = parsed?.sidebar;
-        if (typeof width !== 'number' || width === 0) return;
-        if (typeof ctx.layout?.toggleSidebar !== 'function') return;
-        // A render can lag behind the store; never toggle twice for one state.
-        if (Date.now() - lastCollapseToggle < 600) return;
-        try { ctx.layout.toggleSidebar(); } catch { return; }
-        lastCollapseToggle = Date.now();
-        collapsedSidebar = true;
-        // The frame can be replaced by the toggle's render; settle a few times.
-        for (const delay of [0, 80, 250, 600]) setTimeout(schedule, delay);
-      };
-
-      /**
-       * Collapse the native project/session sidebar so the file tree is the
-       * leftmost column. Retries briefly because the layout can restore the
-       * sidebar's width in the render that follows a Session switch. After that
-       * window, expanding it again mid-session stays the user's choice.
-       */
-      const collapseSidebar = () => {
-        if (disposed || !wanted) return;
-        clearInterval(collapseTimer);
-        tryCollapse();
-        const until = Date.now() + 4000;
-        collapseTimer = setInterval(() => {
-          if (disposed || !wanted || Date.now() > until) {
-            clearInterval(collapseTimer);
-            collapseTimer = undefined;
-            return;
-          }
-          tryCollapse();
-        }, 400);
+        // Keep the workspace and conversation list available while editing.
       };
 
       const onResize = () => schedule();
@@ -2349,7 +2344,6 @@ window.__ModuleLoader__.load({
       // it; re-find it when the section's DOM observer calls setActive again.
       return {
         setActive,
-        collapseSidebar,
         refresh() {
           if (!wanted) return;
           if (frame !== undefined && !frame.isConnected) frame = undefined;
@@ -2358,19 +2352,10 @@ window.__ModuleLoader__.load({
         },
         dispose() {
           disposed = true;
-          clearInterval(collapseTimer);
-          clearTimeout(restoreTimer);
           window.removeEventListener('resize', onResize);
           frameObserver?.disconnect();
           resizeObserver?.disconnect();
           if (scheduled !== undefined) clearTimeout(scheduled);
-          if (collapsedSidebar) {
-            const width = document.querySelector('[class*="sidebarCol"]')?.getBoundingClientRect().width;
-            if (width === 0 && typeof ctx.layout?.toggleSidebar === 'function') {
-              try { ctx.layout.toggleSidebar(); } catch { /* leaving the app anyway */ }
-            }
-            collapsedSidebar = false;
-          }
           frame?.classList.remove('dsh-ol-flipped');
           frame?.style.removeProperty('--dsh-ol-flipped-columns');
           frame?.style.removeProperty('--dsh-ol-flipped-handle');
@@ -2409,7 +2394,12 @@ window.__ModuleLoader__.load({
       const storedCollapse = (() => {
         try { return localStorage.getItem(COLLAPSE_KEY); } catch { return null; }
       })();
-      let collapsed = storedCollapse === null ? true : storedCollapse === '1';
+      let collapsed = storedCollapse === null ? false : storedCollapse === '1';
+      const FOLD_KEY = 'dsh-overleaf:collapsed-workspaces';
+      const closedProjects = new Set((() => {
+        try { const value = JSON.parse(localStorage.getItem(FOLD_KEY) ?? '[]'); return Array.isArray(value) ? value.filter((dir) => typeof dir === 'string') : []; }
+        catch { return []; }
+      })());
       let disposed = false;
       /** Directory whose long-running action is in progress ('' when idle). */
       let busy = '';
@@ -2424,6 +2414,150 @@ window.__ModuleLoader__.load({
         return node;
       };
 
+      const icon = (name, className = '') => {
+        const svg = document.createElementNS(FILE_TREE_ICON_NS, 'svg');
+        svg.setAttribute('width', '16'); svg.setAttribute('height', '16');
+        svg.setAttribute('aria-hidden', 'true');
+        svg.setAttribute('data-icon', `dsw-icon-${name}`);
+        if (className) svg.setAttribute('class', className);
+        if (name === 'folder-plus') {
+          svg.setAttribute('viewBox', '0 0 24 24');
+          appendSvgPath(svg, 'M20 12v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h5M19 2v8M15 6h8');
+        } else {
+          const use = document.createElementNS(FILE_TREE_ICON_NS, 'use');
+          use.setAttribute('href', `#dsw-icon-${name}`); svg.append(use);
+        }
+        return svg;
+      };
+      const iconButton = (name, label, onClick) => {
+        const button = el('button', 'dsh-ol-sb-icon');
+        button.type = 'button'; button.title = label; button.setAttribute('aria-label', label);
+        button.append(icon(name));
+        button.addEventListener('click', (event) => { event.stopPropagation(); onClick(event); });
+        return button;
+      };
+      const compactTime = (value) => {
+        const time = typeof value === 'string' ? Date.parse(value) : Number(value);
+        if (!Number.isFinite(time)) return '';
+        const minutes = Math.max(0, Math.floor((Date.now() - time) / 60000));
+        if (minutes < 1) return '刚刚';
+        if (minutes < 60) return `${minutes}m`;
+        if (minutes < 1440) return `${Math.floor(minutes / 60)}h`;
+        return `${Math.floor(minutes / 1440)}d`;
+      };
+      const toggleProject = (workspace) => {
+        if (closedProjects.has(workspace.localDir)) closedProjects.delete(workspace.localDir);
+        else closedProjects.add(workspace.localDir);
+        try { localStorage.setItem(FOLD_KEY, JSON.stringify([...closedProjects])); } catch { /* Storage is optional. */ }
+        render();
+      };
+      function closeMenu() { (ctx.get?.('contextMenus') ?? ctx.contextMenus)?.close(); }
+      function openSessionMenu(session, trigger, point) {
+        const service = ctx.get?.('contextMenus') ?? ctx.contextMenus;
+        if (service === undefined) { setFlash('error', 'Harness 会话菜单服务尚未就绪。'); return; }
+        const active = service.active.getSnapshot();
+        if (active?.kind === 'session' && active.value.sessionId === session.id) { service.close(); return; }
+        trigger.focus({ preventScroll: true });
+        const rect = trigger.getBoundingClientRect();
+        service.open({ kind: 'session', value: { sessionId: session.id, displayTitle: sessionLabel(session) } },
+          point ?? { x: rect.left, y: rect.bottom }, { button: `overleaf-session:${session.id}` });
+      }
+      function openMenu(workspace, trigger, point) {
+        const service = ctx.get?.('contextMenus') ?? ctx.contextMenus;
+        const item = workspaceItemOf(ctx, workspace.localDir);
+        if (service === undefined || item === undefined) { setFlash('error', 'Harness 工作区菜单尚未就绪。'); return; }
+        const active = service.active.getSnapshot();
+        if (active?.kind === 'workspace' && active.value.workspaceId === item.workspaceId) { service.close(); return; }
+        trigger.focus({ preventScroll: true });
+        const rect = trigger.getBoundingClientRect();
+        service.open({ kind: 'workspace', value: { workspaceId: item.workspaceId,
+          path: workspace.localDir, displayTitle: workspace.projectName } },
+          point ?? { x: rect.left, y: rect.bottom }, { button: `overleaf-workspace:${item.workspaceId}` });
+      }
+      const nativeIcons = require('@deepseek-ai/dsh-client-ui-primitives');
+      ctx.slots.inject('contextMenu.icon', function* () {
+        for (const [key, Icon] of Object.entries({
+          'overleaf.link': nativeIcons.IconLinkOutlineRegular,
+          'overleaf.new': nativeIcons.IconNewChatOutlineRegular,
+          'overleaf.pause': nativeIcons.IconPauseOutlineRegular,
+          'overleaf.refresh': nativeIcons.IconRefreshOutlineRegular,
+        })) { if (Icon) yield ctx.slots.register({ name: 'contextMenu.icon', key }, Icon); }
+      });
+      const removeWorkspaceMenu = (ctx.get?.('contextMenus') ?? ctx.contextMenus)?.register({
+        id: 'overleaf.workspace-tools', target: 'workspace', order: 250,
+        observe: () => [ctx.workspaces.list],
+        resolve: ({ workspaceId }) => {
+          const workspace = snapshot.workspaces.find((record) => workspaceItemOf(ctx, record.localDir)?.workspaceId === workspaceId);
+          if (workspace === undefined) return [];
+          const running = ['connected', 'connecting', 'reconnecting'].includes(workspace.phase);
+          const children = [
+            { id: 'status', label: subtitle(workspace), disabled: true },
+            { id: 'connect', label: running ? '断开连接' : '连接并同步', icon: { key: 'overleaf.link' }, run: () => toggleSync(workspace) },
+            { id: 'new', label: '新建会话', icon: { key: 'overleaf.new' }, run: () => startNewSession(workspace) },
+          ];
+          if (workspace.phase === 'connected') {
+            children.push({ id: 'pause', label: workspace.paused ? '恢复自动推送' : '暂停自动推送', icon: { key: 'overleaf.pause' },
+              run: () => runAction(workspace, 'pause', () => api('live', { local_path: workspace.localDir, action: workspace.paused ? 'resume' : 'pause' })) },
+              { id: 'flush', label: '立即同步本地改动', icon: { key: 'overleaf.refresh' },
+                run: () => runAction(workspace, 'flush', () => api('live', { local_path: workspace.localDir, action: 'flush' })) });
+          }
+          children.push({ id: 'web', label: '在 Overleaf 中打开', icon: { key: 'overleaf.link' },
+            run: () => { window.open(`${workspace.server}/project/${encodeURIComponent(workspace.projectId)}`, '_blank', 'noopener,noreferrer'); } },
+            { id: 'manage', label: '管理工作区与账号', icon: { key: 'workspace.rename' }, run: () => ctx.layout.selectPanel(PANEL) });
+          return children;
+        },
+      });
+      let removalDialog;
+      function confirmSessionRemoval(workspace, session) {
+        removalDialog?.close(); removalDialog?.remove();
+        const dialog = el('dialog', 'dsh-ol-sb-confirm');
+        removalDialog = dialog;
+        dialog.setAttribute('aria-labelledby', 'overleaf-remove-session-title');
+        const heading = el('h2', '', '删除会话？'); heading.id = 'overleaf-remove-session-title';
+        const name = el('p', 'dsh-ol-sb-confirm-name', sessionLabel(session));
+        const description = el('p', '', '会话将归档并从 Overleaf 列表移除。Harness 历史日志和论文文件都会保留。');
+        const error = el('p', 'dsh-ol-error'); error.setAttribute('role', 'alert'); error.hidden = true;
+        const actions = el('div', 'dsh-ol-sb-confirm-actions');
+        const cancel = el('button', '', '取消'); cancel.type = 'button'; cancel.autofocus = true;
+        const confirm = el('button', 'danger', '删除会话'); confirm.type = 'button';
+        let working = false;
+        const close = () => { if (!working) { dialog.close(); dialog.remove(); removalDialog = undefined; } };
+        cancel.addEventListener('click', close);
+        dialog.addEventListener('cancel', (event) => { event.preventDefault(); close(); });
+        confirm.addEventListener('click', async () => {
+          if (working) return;
+          const latest = sessionService(ctx)?.list?.getSnapshot?.().byId?.[session.id];
+          if (latest?.running) { error.hidden = false; error.textContent = '请先停止此会话，再删除。'; return; }
+          working = true; cancel.disabled = true; confirm.disabled = true; confirm.textContent = '删除中…'; error.hidden = true;
+          let archived = false;
+          try {
+            await ctx.uiWorkspace.archiveSession(session.id); archived = true;
+            await api('forgetSession', { local_path: workspace.localDir, session_id: session.id });
+            await refresh();
+            working = false; close(); render();
+          } catch (reason) {
+            error.hidden = false;
+            error.textContent = `${archived ? '会话已归档，但移除未完成：' : ''}${errorText(reason)}`;
+          } finally {
+            working = false; cancel.disabled = false; confirm.disabled = false; confirm.textContent = '删除会话';
+          }
+        });
+        actions.append(cancel, confirm); dialog.append(heading, name, description, error, actions);
+        document.body.append(dialog); dialog.showModal();
+      }
+      const removeDeleteMenu = (ctx.get?.('contextMenus') ?? ctx.contextMenus)?.register({
+        id: 'overleaf.remove-session', target: 'session', order: 700,
+        observe: () => [ctx.workspaces.list, sessionService(ctx).list],
+        resolve: ({ sessionId }) => {
+          const workspace = snapshot.workspaces.find((item) => workspaceItemOf(ctx, item.localDir)?.sessionIds.includes(sessionId));
+          if (workspace === undefined || removedWorkspaceSessions.get(workspace.localDir)?.has(sessionId)) return [];
+          const session = sessionService(ctx)?.list?.getSnapshot?.().byId?.[sessionId];
+          if (session === undefined || session.blank) return [];
+          return [{ id: 'delete', label: '删除会话', danger: true, afterContent: true, separatorBefore: true,
+            disabled: session.running === true, run: () => confirmSessionRemoval(workspace, session) }];
+        },
+      });
+
       const subtitle = (workspace) => {
         if (workspace.phase === 'connected') {
           const extras = [workspace.paused ? '已暂停' : '实时同步中'];
@@ -2434,7 +2568,7 @@ window.__ModuleLoader__.load({
         if (workspace.phase === 'error') return workspace.error || '连接出错';
         if (workspace.phase === 'connecting') return '连接中…';
         if (workspace.phase === 'reconnecting') return '重连中…';
-        return '未启动实时同步';
+        return '本地工作区 · 未连接';
       };
 
       /** Native workspace rows for the directories this plugin owns. */
@@ -2456,9 +2590,8 @@ window.__ModuleLoader__.load({
           && snapshot.workspaces.some((entry) => sameDir(entry.localDir, workspace.path));
       };
 
-      // The native Workspaces tree is the only view that groups by directory, so
-      // removing its duplicate Overleaf rows is enough; the section above keeps
-      // the same projects and still opens their sessions.
+      // The Overleaf section groups each directory with its conversations.
+      // Hide duplicate native rows for those same registered workspaces.
       let hiddenFrame;
       function syncNativeGroups() {
         hiddenFrame = undefined;
@@ -2492,6 +2625,7 @@ window.__ModuleLoader__.load({
       /** Run one sidebar action, keeping a single action in flight at a time. */
       async function runAction(workspace, key, action) {
         if (busy !== '') return;
+        closeMenu();
         busy = `${key}:${workspace.localDir}`;
         render();
         try {
@@ -2505,10 +2639,6 @@ window.__ModuleLoader__.load({
         }
       }
 
-      function openWorkspaceRow(workspace) {
-        return runAction(workspace, 'open', () => openProject(workspace));
-      }
-
       function startNewSession(workspace) {
         if (workspaceItemOf(ctx, workspace.localDir) === undefined) {
           setFlash('error', '工作区尚未就绪，请稍后重试。');
@@ -2516,7 +2646,7 @@ window.__ModuleLoader__.load({
         }
         return runAction(workspace, 'new', async () => {
           await openProject(workspace, { fresh: true });
-          setFlash('ok', `已在 ${workspace.projectName} 中开始新会话；旧会话仍可从「管理」打开。`);
+
         });
       }
 
@@ -2537,71 +2667,49 @@ window.__ModuleLoader__.load({
         return undefined;
       }
 
-      /** Compile on Overleaf without leaving the current conversation. */
-      function compileWorkspace(workspace) {
-        return runAction(workspace, 'compile', async () => {
-          const mainFile = activeMainFile(workspace);
-          try { await api('live', { local_path: workspace.localDir, action: 'flush' }); } catch { /* snapshot mode */ }
-          const result = await api('compile', { local_path: workspace.localDir,
-            ...(mainFile !== undefined ? { main_file: mainFile } : {}) });
-          if (result.status === 'success') {
-            const notes = result.errors?.length ?? 0;
-            // Do not steal the screen: a PDF tab that is already open refreshes
-            // itself; otherwise the editor keeps its compile result in view.
-            setFlash('ok', `编译成功，PDF 已更新${notes > 0 ? `（${notes} 条提示）` : ''}：${workspace.projectName}`);
-            return;
-          }
-          const first = result.errors?.[0];
-          const location = first?.file !== null && first?.file !== undefined
-            ? `${first.file}${typeof first.line === 'number' ? `:${first.line}` : ''}: `
-            : '';
-          setFlash('error',
-            `编译失败（${result.errors?.length ?? 0} 个错误）：${location}${first?.message ?? '未知错误'}`);
-        });
-      }
-
       /** Push what is pending, then close the socket and the directory watcher. */
       function toggleSync(workspace) {
         const running = workspace.phase === 'connected' || workspace.phase === 'connecting'
           || workspace.phase === 'reconnecting';
         return runAction(workspace, 'live', async () => {
           await api('live', { local_path: workspace.localDir, action: running ? 'stop' : 'start' });
-          setFlash('ok', running
-            ? `已结束 ${workspace.projectName} 的实时同步；文件保留在本机。`
-            : `已恢复 ${workspace.projectName} 的实时同步。`);
+
         });
       }
 
       function render() {
         frame = undefined;
         if (disposed) return;
+        // Native menus retain their trigger for focus and dismissal. Keep its
+        // DOM node alive until the menu closes instead of rebuilding the list.
+        const activeMenu = (ctx.get?.('contextMenus') ?? ctx.contextMenus)?.active?.getSnapshot?.();
+        if (['session', 'workspace'].includes(activeMenu?.kind) && host.childElementCount > 0) return;
+        const list = host.closest('[class*="scrollArea"]');
+        const savedListScroll = list?.scrollTop;
         const previousBody = host.querySelector('.dsh-ol-sb-body');
         const savedScroll = previousBody?.scrollTop ?? 0;
         host.replaceChildren();
 
-        const head = el('button', 'dsh-ol-sb-head');
-        head.type = 'button';
-        head.append(el('span', `dsh-ol-sb-chev${collapsed ? '' : ' open'}`, '›'), el('span', '', 'Overleaf'));
-        if (setupError !== '') {
-          const warning = el('span', '', '⚠');
-          warning.title = setupError;
-          warning.style.color = '#e56767';
-          head.append(warning);
-        }
-        const manage = el('button', 'dsh-ol-sb-manage', '管理');
-        manage.type = 'button';
-        manage.addEventListener('click', (event) => { event.stopPropagation(); ctx.layout.selectPanel(PANEL); });
-        head.append(manage);
-        head.addEventListener('click', () => {
-          collapsed = !collapsed;
+        const head = el('div', 'dsh-ol-sb-head');
+        const sectionToggle = el('button', 'dsh-ol-sb-section-toggle');
+        sectionToggle.type = 'button'; sectionToggle.setAttribute('aria-expanded', String(!collapsed));
+        sectionToggle.setAttribute('aria-label', collapsed ? '展开 Overleaf' : '折叠 Overleaf');
+        sectionToggle.append(icon('chevron-right-outline-regular'), el('span', '', 'Overleaf'));
+        sectionToggle.addEventListener('click', () => {
+          closeMenu(); collapsed = !collapsed;
           try { localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0'); } catch { /* Storage is optional. */ }
           render();
         });
+        head.append(sectionToggle,
+          iconButton('settings-outline-regular', '管理 Overleaf 工作区与账号', () => ctx.layout.selectPanel(PANEL)),
+          iconButton('project-add-outline-regular', '从已有项目创建本地工作区', () => ctx.layout.selectPanel(PANEL)));
 
         const body = el('div', 'dsh-ol-sb-body');
+        body.setAttribute('role', 'tree'); body.setAttribute('aria-label', 'Overleaf 工作区与会话');
         if (collapsed) body.style.display = 'none';
 
-        if (snapshot.workspaces.length === 0) {
+        const visibleWorkspaces = snapshot.workspaces.filter((record) => workspaceItemOf(ctx, record.localDir) !== undefined);
+        if (visibleWorkspaces.length === 0) {
           const empty = el('div', 'dsh-ol-sb-empty', '还没有 Overleaf 项目。');
           const link = el('button', '', '在面板中登录并打开项目');
           link.type = 'button';
@@ -2615,59 +2723,97 @@ window.__ModuleLoader__.load({
           body.append(failure);
         }
         if (flash !== undefined) body.append(el('div', `dsh-ol-sb-note ${flash.kind}`, flash.text));
-        for (const workspace of snapshot.workspaces) {
-          const running = workspace.phase === 'connected' || workspace.phase === 'connecting'
-            || workspace.phase === 'reconnecting';
+        for (const record of visibleWorkspaces) {
+          const nativeTitle = workspaceItemOf(ctx, record.localDir)?.title?.trim();
+          const folderName = record.localDir.replace(/\/+$/u, '').split('/').pop();
+          const workspace = { ...record, projectName: nativeTitle && nativeTitle !== folderName ? nativeTitle : record.projectName };
+          const running = ['connected', 'connecting', 'reconnecting'].includes(workspace.phase);
+          const expanded = !closedProjects.has(workspace.localDir);
           const row = el('div', 'dsh-ol-sb-row');
-          row.setAttribute('role', 'button');
-          row.tabIndex = 0;
-          row.title = `${workspace.projectName}\n${workspace.localDir}\n点击打开最近的会话`;
+          row.dataset.localDir = workspace.localDir;
+          row.setAttribute('role', 'treeitem'); row.setAttribute('aria-expanded', String(expanded));
+          row.setAttribute('aria-label', workspace.projectName); row.tabIndex = 0;
+          row.title = `${workspace.projectName}\n${subtitle(workspace)}\n${workspace.localDir}`;
           if (busy !== '') row.setAttribute('aria-disabled', 'true');
-
-          const main = el('div', 'dsh-ol-sb-main');
-          main.append(el('span', `dsh-ol-sb-dot ${workspace.phase}`));
-          const text = el('span', 'dsh-ol-sb-text');
-          text.append(el('span', 'dsh-ol-sb-title', workspace.projectName), el('span', 'dsh-ol-sb-sub', subtitle(workspace)));
-          main.append(text);
-
-          // Compile and stop stay reachable without opening the management page;
-          // they appear on hover (and on keyboard focus) to keep the list calm.
-          const actions = el('div', 'dsh-ol-sb-actions');
-          const action = (label, className, handler) => {
-            const button = el('button', `dsh-ol-sb-act${className === undefined ? '' : ` ${className}`}`, label);
-            button.type = 'button';
-            button.disabled = busy !== '';
-            button.addEventListener('click', (event) => {
-              event.stopPropagation();
-              handler();
-            });
-            actions.append(button);
-            return button;
-          };
-          action(busy === `compile:${workspace.localDir}` ? '编译中…' : '编译', undefined,
-            () => { void compileWorkspace(workspace); });
-          action(busy === `new:${workspace.localDir}` ? '创建中…' : '新会话', undefined,
-            () => { void startNewSession(workspace); });
-          action(busy === `live:${workspace.localDir}` ? '处理中…' : running ? '结束' : '同步',
-            running ? 'end' : undefined, () => { void toggleSync(workspace); });
-
-          row.append(main, actions);
-          row.addEventListener('click', () => { openWorkspaceRow(workspace); });
+          const leading = el('button', 'dsh-ol-sb-leading');
+          leading.type = 'button'; leading.setAttribute('aria-expanded', String(expanded));
+          leading.setAttribute('aria-label', `${expanded ? '折叠' : '展开'} ${workspace.projectName} 的会话`);
+          leading.append(icon(expanded ? 'folder-open-regular' : 'folder-close-regular', 'dsh-ol-sb-folder'), icon('triangle-right-fill-regular', 'dsh-ol-sb-arrow'));
+          if (running || workspace.phase === 'error') leading.append(el('span', `dsh-ol-sb-status ${workspace.phase}`));
+          leading.addEventListener('click', (event) => { event.stopPropagation(); closeMenu(); toggleProject(workspace); });
+          const actions = el('span', 'dsh-ol-sb-actions');
+          const more = iconButton('ellipsis-outline-regular', `更多操作：${workspace.projectName}`, (event) => openMenu(workspace, event.currentTarget));
+          more.setAttribute('data-context-menu-trigger', '');
+          more.setAttribute('aria-haspopup', 'menu'); more.setAttribute('aria-expanded', 'false');
+          const connect = iconButton('link-outline-regular', `${running ? '断开连接' : '连接并同步'}：${workspace.projectName}`, () => { void toggleSync(workspace); });
+          if (running) connect.classList.add('connected');
+          const create = iconButton('new-chat-outline-regular', `新建会话：${workspace.projectName}`, () => { void startNewSession(workspace); });
+          for (const button of [more, connect, create]) { button.disabled = busy !== '' || (button !== more && !workspace.bound); actions.append(button); }
+          row.append(leading, el('span', 'dsh-ol-sb-title', workspace.projectName), actions);
+          const enter = () => { closeMenu(); toggleProject(workspace); };
+          row.addEventListener('click', enter);
+          row.addEventListener('contextmenu', (event) => { event.preventDefault(); openMenu(workspace, more, { x: event.clientX, y: event.clientY }); });
           row.addEventListener('keydown', (event) => {
             if (event.target !== row) return;
+            if (event.key === 'ArrowRight' && !expanded || event.key === 'ArrowLeft' && expanded) {
+              event.preventDefault(); toggleProject(workspace); return;
+            }
             if (event.key !== 'Enter' && event.key !== ' ') return;
-            event.preventDefault();
-            openWorkspaceRow(workspace);
+            event.preventDefault(); enter();
           });
           body.append(row);
+          if (!expanded) continue;
+          const conversations = el('div', 'dsh-ol-sb-sessions'); conversations.setAttribute('role', 'group');
+          const current = ctx.uiWorkspace?.selection?.getSnapshot?.().sessionId;
+          const nativeMenu = ctx.get?.('contextMenus') ?? ctx.contextMenus;
+          const activeMenu = nativeMenu?.active?.getSnapshot?.();
+          for (const session of sessionsOfWorkspace(ctx, workspace.localDir)) {
+            const menuOpen = activeMenu?.kind === 'session' && activeMenu.value.sessionId === session.id;
+            const button = el('div', `dsh-ol-sb-session${session.id === current ? ' current' : ''}${menuOpen ? ' menu-open' : ''}`);
+            button.dataset.sessionId = session.id; button.tabIndex = 0;
+            button.setAttribute('role', 'treeitem'); button.setAttribute('aria-selected', String(session.id === current));
+            button.title = sessionLabel(session); button.setAttribute('aria-current', session.id === current ? 'true' : 'false');
+            button.append(el('span', 'dsh-ol-sb-title', sessionLabel(session)), el('span', 'dsh-ol-sb-time', compactTime(session.updatedAt)));
+            const open = () => {
+              if (busy !== '' || !workspace.bound) return;
+              void runAction(workspace, 'session', () => openProject(workspace, { sessionId: session.id }));
+            };
+            button.addEventListener('click', open);
+            if (session.blank !== true) {
+              const actions = el('span', 'dsh-ol-sb-session-actions');
+              const more = iconButton('ellipsis-outline-regular', `会话操作：${sessionLabel(session)}`, (event) => {
+                openSessionMenu(session, event.currentTarget);
+              });
+              more.setAttribute('data-context-menu-trigger', '');
+              more.setAttribute('aria-haspopup', 'menu'); more.setAttribute('aria-expanded', String(menuOpen));
+              more.disabled = busy !== '';
+              actions.append(more); button.append(actions);
+              button.addEventListener('contextmenu', (event) => {
+                event.preventDefault(); openSessionMenu(session, more, { x: event.clientX, y: event.clientY });
+              });
+            }
+            button.addEventListener('keydown', (event) => {
+              if (event.target !== button || event.isComposing) return;
+              if (event.key === 'ContextMenu' || event.key === 'F10' && event.shiftKey) {
+                event.preventDefault();
+                const more = button.querySelector('[aria-haspopup=menu]');
+                if (more) openSessionMenu(session, more);
+              } else if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); }
+            });
+            conversations.append(button);
+          }
+          body.append(conversations);
         }
 
         host.append(head);
         if (!collapsed) host.append(body);
         if (savedScroll > 0) body.scrollTop = savedScroll;
+        // Replacing this section briefly shrinks the shared scroll container.
+        // Restore its position after the complete list is back in place.
+        if (list !== null && savedListScroll !== undefined) list.scrollTop = savedListScroll;
       }
 
-      const schedule = () => { if (!disposed && frame === undefined) frame = requestAnimationFrame(render); };
+      const schedule = () => { if (!disposed && frame === undefined) frame = setTimeout(render, 0); };
 
       async function refresh() {
         if (disposed) return;
@@ -2694,9 +2840,28 @@ window.__ModuleLoader__.load({
       });
       observer.observe(document.body, { childList: true, subtree: true });
       const unsubscribe = ctx.workspaces.list.subscribe(() => { void refresh(); });
+      const unsubscribeSessions = sessionService(ctx)?.list?.subscribe?.(() => schedule());
+      const unsubscribeSessionMenu = (ctx.get?.('contextMenus') ?? ctx.contextMenus)?.active?.subscribe?.(() => {
+        const active = (ctx.get?.('contextMenus') ?? ctx.contextMenus)?.active?.getSnapshot?.();
+        const ownWorkspace = active?.kind === 'workspace' && snapshot.workspaces.some((record) =>
+          workspaceItemOf(ctx, record.localDir)?.workspaceId === active.value.workspaceId);
+        document.documentElement.classList.toggle('dsh-overleaf-flat-workspace-menu', ownWorkspace);
+        for (const row of host.querySelectorAll('.dsh-ol-sb-session')) {
+          const opened = active?.kind === 'session' && active.value.sessionId === row.dataset.sessionId;
+          row.classList.toggle('menu-open', opened);
+          row.querySelector('[aria-haspopup=menu]')?.setAttribute('aria-expanded', String(opened));
+        }
+        for (const row of host.querySelectorAll('.dsh-ol-sb-row')) {
+          const item = workspaceItemOf(ctx, row.dataset.localDir);
+          const opened = active?.kind === 'workspace' && active.value.workspaceId === item?.workspaceId;
+          row.classList.toggle('menu-open', opened);
+          row.querySelector('[aria-haspopup=menu]')?.setAttribute('aria-expanded', String(opened));
+        }
+        if (!['session', 'workspace'].includes(active?.kind)) schedule();
+      });
       let unsubscribeSelection;
       try {
-        unsubscribeSelection = ctx.uiWorkspace.selection?.subscribe?.(() => syncMode());
+        unsubscribeSelection = ctx.uiWorkspace.selection?.subscribe?.(() => { syncMode(); schedule(); });
       } catch (error) {
         console.warn('[dsh-overleaf] session selection subscription failed:', error);
       }
@@ -2722,17 +2887,23 @@ window.__ModuleLoader__.load({
 
       return {
         refresh,
-        collapseSidebar() { layout.collapseSidebar(); },
         refreshLayout() { layout.refresh(); },
         dispose() {
+          closeMenu();
+          removalDialog?.close(); removalDialog?.remove();
+          removeDeleteMenu?.();
+          removeWorkspaceMenu?.();
           disposed = true;
           observer.disconnect();
           unsubscribe?.();
+          unsubscribeSessions?.();
+          unsubscribeSessionMenu?.();
+          document.documentElement.classList.remove('dsh-overleaf-flat-workspace-menu');
           unsubscribeSelection?.();
           clearInterval(timer);
           clearInterval(tidyTimer);
           clearTimeout(flashTimer);
-          if (frame !== undefined) cancelAnimationFrame(frame);
+          if (frame !== undefined) clearTimeout(frame);
           if (hiddenFrame !== undefined) clearTimeout(hiddenFrame);
           for (const group of document.querySelectorAll('.dsh-ol-native-hidden')) {
             group.classList.remove('dsh-ol-native-hidden');
@@ -2903,6 +3074,7 @@ window.__ModuleLoader__.load({
           }
           if (sessionId === undefined) throw new Error('工作区还没有可用的会话。');
           rememberSession(sessionId, localDir);
+          await sidebarSection?.refresh();
 
           const sidebar = sidebarService();
           // Navigation commits on the next render. Acting before the Sidebar
@@ -2919,18 +3091,6 @@ window.__ModuleLoader__.load({
           let info;
           try { info = await api('prepare', { local_path: localDir }); }
           catch (error) { console.warn('[dsh-overleaf] prepare failed:', error); }
-
-          // Resuming a conversation skips the `open` RPC that normally restarts
-          // live sync, so after a Harness restart the workspace would sit frozen:
-          // edits pile up locally and the remote drifts. Restart it here.
-          if (info?.bound === true) {
-            try {
-              const status = await api('live', { local_path: localDir, action: 'status' });
-              if (status.phase === 'idle' || status.phase === 'stopped') {
-                await api('live', { local_path: localDir, action: 'start' });
-              }
-            } catch (error) { console.warn('[dsh-overleaf] live sync did not restart:', error); }
-          }
 
           if (sidebar === undefined) {
             console.warn('[dsh-overleaf] sidebarRight service is unavailable; skipping the auto-open');
@@ -3018,22 +3178,40 @@ window.__ModuleLoader__.load({
           pruneEditorPanes(sessionId, sidebar);
           await wait(600);
           pruneEditorPanes(sessionId, sidebar);
-          // The file tree is the left column; the project list would be a
-          // fourth one. It comes back when the project is left.
-          sidebarSection?.collapseSidebar();
+          // Keep the workspace's conversations visible during editing.
           sidebarSection?.refreshLayout();
         }
 
         /** Open a workspace record from the panel or sidebar section, registering it when needed. */
         async function openRecord(record, options = {}) {
-          // Opening an already registered directory is idempotent on the host and
-          // restarts live sync after a Harness restart; skipping it here left an
-          // existing workspace entered without its realtime session.
-          const opened = await api('open', { base_url: record.server, project_id: record.projectId,
-            project_name: record.projectName, local_path: record.localDir });
-          const workspaceId = opened.workspaceId ?? workspaceIdFor(record.localDir);
-          if (workspaceId === undefined) throw new Error('工作区尚未就绪，请稍后重试。');
-          await enterWorkspace(workspaceId, record.localDir, options);
+          const list = document.querySelector('.dsh-ol-sb')?.closest('[class*="scrollArea"]');
+          const scrollTop = list?.scrollTop;
+          let userScrolled = false;
+          const onInput = () => { userScrolled = true; };
+          const restore = () => {
+            if (!userScrolled && list !== undefined && scrollTop !== undefined && list.scrollTop !== scrollTop) {
+              list.scrollTop = scrollTop;
+            }
+          };
+          // Native navigation may scroll its duplicate workspace row into view.
+          // Hold the visible list steady unless the user starts scrolling.
+          for (const event of ['wheel', 'touchmove', 'pointerdown', 'keydown']) {
+            list?.addEventListener(event, onInput, { passive: true });
+          }
+          list?.addEventListener('scroll', restore);
+          try {
+            const opened = await api('open', { base_url: record.server, project_id: record.projectId,
+              project_name: record.projectName, local_path: record.localDir });
+            const workspaceId = opened.workspaceId ?? workspaceIdFor(record.localDir);
+            if (workspaceId === undefined) throw new Error('工作区尚未就绪，请稍后重试。');
+            await enterWorkspace(workspaceId, record.localDir, options);
+          } finally {
+            restore();
+            list?.removeEventListener('scroll', restore);
+            for (const event of ['wheel', 'touchmove', 'pointerdown', 'keydown']) {
+              list?.removeEventListener(event, onInput);
+            }
+          }
         }
 
         /**

@@ -74,6 +74,7 @@ export async function registerOverleafUi(ctx, host, runtime) {
         ...project,
         projectName: project.projectName ?? '未命名项目',
         openedAt: project.openedAt ?? null,
+        removedSessionIds: project.removedSessionIds ?? [],
         bound: isOverleafProject(project.localDir),
       }));
       let projects = [];
@@ -127,6 +128,7 @@ export async function registerOverleafUi(ctx, host, runtime) {
           projectName: project.projectName ?? '未命名项目',
           server: project.server,
           projectId: project.projectId,
+          removedSessionIds: project.removedSessionIds ?? [],
           bound: isOverleafProject(project.localDir),
           phase: status.phase ?? 'idle',
           paused: status.paused === true,
@@ -136,6 +138,20 @@ export async function registerOverleafUi(ctx, host, runtime) {
         };
       });
       return { workspaces, servers: runtime.secrets.list().length };
+    }
+
+    /** Remove an already archived conversation from this Overleaf workspace. */
+    forgetSession(request) {
+      const localDir = normalizeLocal(request.local_path);
+      const project = runtime.projectTable.get(localDir);
+      if (project === undefined) throw new Error('找不到这个 Overleaf 工作区。');
+      const registry = runtime.ctx.get?.('workspaceRegistry');
+      const workspace = registry?.list().find((item) => normalizeLocal(item.path) === localDir);
+      if (!workspace?.sessionIds.includes(request.session_id)) throw new Error('会话不属于这个工作区。');
+      if (!registry.archivedSessionIds.includes(request.session_id)) throw new Error('请先归档会话，再从 Overleaf 列表移除。');
+      const removedSessionIds = [...new Set([...(project.removedSessionIds ?? []), request.session_id])];
+      runtime.projectTable.put({ ...project, removedSessionIds });
+      return { localDir, removedSessionIds };
     }
 
     /** Live-sync status for one workspace. */
@@ -290,7 +306,7 @@ export async function registerOverleafUi(ctx, host, runtime) {
   const project = z.object({ id: z.string(), name: z.string(), lastUpdated: z.string().nullable(),
     accessLevel: z.string().optional(), archived: z.boolean(), trashed: z.boolean() });
   const workspace = z.object({ localDir: z.string(), server: z.string(), projectId: z.string(),
-    projectName: z.string(), openedAt: z.string().nullable(), bound: z.boolean() });
+    projectName: z.string(), openedAt: z.string().nullable(), bound: z.boolean(), removedSessionIds: z.array(z.string()) });
   /** A workspace named either directly by the panel or through a Sidebar tab's Session. */
   const target = z.object({ local_path: z.string().min(1).max(8192).optional(),
     session_id: z.string().min(1).max(256).optional() }).strict();
@@ -309,9 +325,11 @@ export async function registerOverleafUi(ctx, host, runtime) {
       cancel: true, result: z.object({ status: z.string(), pdfPath: z.string().nullable(),
         errors: z.array(z.object({ file: z.string().nullable(), line: z.number().nullable(), message: z.string() })),
         warnings: z.array(z.object({ message: z.string() })) }) },
+    forgetSession: { request: z.object({ local_path: z.string().min(1).max(8192), session_id: z.string().min(1).max(256) }).strict(),
+      result: z.object({ localDir: z.string(), removedSessionIds: z.array(z.string()) }) },
     overview: { result: z.object({ servers: z.number(),
       workspaces: z.array(z.object({ localDir: z.string(), projectName: z.string(), server: z.string(),
-        projectId: z.string(), bound: z.boolean(), phase: z.string(), paused: z.boolean(),
+        projectId: z.string(), removedSessionIds: z.array(z.string()), bound: z.boolean(), phase: z.string(), paused: z.boolean(),
         collaborators: z.number(), pending: z.number(), error: z.string() })) }) },
     status: { request: z.object({ local_path: z.string().min(1).max(8192) }).strict(),
       result: z.object({ localDir: z.string(), projectId: z.string().optional(), projectName: z.string().optional(),

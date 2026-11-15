@@ -2,7 +2,7 @@
  * dsh-overleaf-workshop — open Overleaf projects as local DSH workspaces.
  *
  * An Overleaf workspace is a plain local directory, seeded on first open from
- * the live project tree (with a zip fallback), so the harness's normal
+ * a project archive, so the harness's normal
  * `read`/`write`/`edit`/`glob`/`grep`/`bash` tools, the sidebar file tree and
  * the built-in PDF preview all work unchanged. The plugin adds what
  * Overleaf-specific flows need: a session store for the server cookie, a panel
@@ -17,7 +17,7 @@
  */
 
 import { homedir } from 'node:os';
-import { mkdirSync, rmSync } from 'node:fs';
+import { mkdirSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadHostModules } from './lib/host-modules.js';
 import { CookieExpiredError, OverleafClient } from './lib/api.js';
@@ -141,44 +141,23 @@ class OverleafService extends host.cordis.Service {
       throw new Error('这个本地目录已经是其他 Overleaf 项目的工作区。');
     }
     const firstOpen = existing === undefined;
-    if (firstOpen) mkdirSync(dir, { recursive: true, mode: 0o755 });
-    let liveStarted = false;
     if (firstOpen) {
-      // Seed from the live project tree: join the docs and fetch binary
-      // fileRefs, instead of downloading and unzipping the whole project.
-      try {
-        const bootstrapped = await this.runtime.live.bootstrap(dir, state);
-        const { hydrated } = bootstrapped;
-        if (hydrated.failed.length > 0 || hydrated.failedDocs.length > 0 || hydrated.missingDocs > 0) {
-          throw new Error(`${hydrated.failed.length + hydrated.failedDocs.length + hydrated.missingDocs} 个文件未能完整拉取`);
-        }
-        liveStarted = true;
-      } catch (error) {
-        this.pluginCtx?.logger?.warn?.('overleaf: live bootstrap failed for %s (%s); falling back to zip',
-          dir, error?.message ?? error);
-        await this.runtime.live.stop(dir).catch(() => {});
-        // stop() persists a state file when it believes the tree was synced.
-        // Remove it before the fallback so a failed zip leaves no half-seeded
-        // workspace that a later open would mistake for complete.
-        rmSync(join(dir, '.overleaf', 'state.json'), { force: true });
-        const client = this.createClient(server);
-        const entries = await client.downloadZip(projectId, { signal });
-        const { files } = applyZip(dir, state, entries);
-        state.files = files;
-        state.pulledAt = new Date().toISOString();
-        writeStateOf(dir, state);
+      if (existsSync(dir) && readdirSync(dir).length > 0) {
+        throw new Error('请选择空目录创建工作区，避免覆盖已有文件。');
       }
+      mkdirSync(dir, { recursive: true, mode: 0o755 });
+      const client = this.createClient(server);
+      const entries = await client.downloadZip(projectId, { signal });
+      const { files } = applyZip(dir, state, entries);
+      state.files = files;
+      state.pulledAt = new Date().toISOString();
+      writeStateOf(dir, state);
     }
     const workspace = await this.ensureWorkspace(dir);
-    this.projects.put({ localDir: dir, server, projectId, projectName: state.projectName ?? projectName,
+    this.projects.put({ ...this.projects.get(dir), localDir: dir, server, projectId, projectName: state.projectName ?? projectName,
       openedAt: new Date().toISOString() });
-    // Real-time sync starts with the project; a failure here must not block
-    // opening the workspace (the snapshot pull/push tools stay available).
-    if (!liveStarted) {
-      await this.runtime.live.start(dir).catch((error) => {
-        this.pluginCtx?.logger?.warn?.('overleaf: live sync did not start for %s: %s', dir, error?.message ?? error);
-      });
-    }
+    // Opening a local directory never changes its connection state.
+    // Live sync belongs to the workspace and starts only on explicit request.
     return { localDir: dir, workspaceId: workspace?.id };
   }
 
@@ -189,7 +168,7 @@ class OverleafService extends host.cordis.Service {
   async ensureWorkspace(dir) {
     const registry = this.pluginCtx?.get?.('workspaceRegistry');
     if (registry === undefined) return undefined;
-    const existing = registry.list().find((workspace) => workspace.path === dir);
+    const existing = registry.list().find((workspace) => normalizeLocal(workspace.path) === dir);
     if (existing !== undefined) return existing;
     return registry.create(dir);
   }
