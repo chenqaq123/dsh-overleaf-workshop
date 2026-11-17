@@ -32,7 +32,15 @@ macOS 桌面版如果找不到 `dsh` 命令，可以使用应用内自带的 CLI
 "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" plugin --profile desktop add github:chenqaq123/dsh-overleaf-workshop
 ```
 
+Windows 桌面版同理：
+
+```powershell
+& "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add github:chenqaq123/dsh-overleaf-workshop
+```
+
 安装完成后重启 Harness，在「插件 → 已安装」中管理插件。
+
+支持 macOS、Linux 和 Windows。插件只做本地文件操作与 Overleaf 服务器通信，对本地系统没有额外要求。
 
 ## 登录与使用
 

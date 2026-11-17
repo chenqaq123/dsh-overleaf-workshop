@@ -18,7 +18,7 @@
 
 import { homedir } from 'node:os';
 import { mkdirSync, readdirSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 import { loadHostModules } from './lib/host-modules.js';
 import { CookieExpiredError, OverleafClient } from './lib/api.js';
 import { compileProject } from './lib/compile.js';
@@ -47,7 +47,7 @@ function defaults() {
 
 function asAbsolute(value, fallback, key) {
   if (value === undefined) return fallback;
-  if (typeof value !== 'string' || !value.startsWith('/')) {
+  if (typeof value !== 'string' || !isAbsolute(value)) {
     throw new Error(`overleaf: config.${key} must be an absolute path`);
   }
   return value;

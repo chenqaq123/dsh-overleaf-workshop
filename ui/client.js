@@ -434,6 +434,62 @@ window.__ModuleLoader__.load({
     };
     const isKnownSession = (sessionId) => typeof sessionDirs()[sessionId] === 'string';
 
+    /**
+     * Overleaf workspace roots seen this page load. The native tree click guard
+     * also runs for sessions created outside the plugin (native 新建会话 with
+     * the workspace selector), which `sessionDirs()` never recorded; matching
+     * the clicked absolute path against these roots identifies — and then
+     * remembers — such sessions.
+     */
+    const workspaceRoots = new Set();
+    const rememberRoot = (localDir) => {
+      if (typeof localDir === 'string' && localDir.length > 0) workspaceRoots.add(localDir);
+    };
+    const toPosixPath = (value) => String(value).replace(/\\/g, '/').replace(/\/+$/u, '');
+    const samePath = (left, right) => {
+      const a = toPosixPath(left);
+      const b = toPosixPath(right);
+      // Drive-letter paths compare case-insensitively; POSIX stays exact.
+      return a.includes(':') || b.includes(':') ? a.toLowerCase() === b.toLowerCase() : a === b;
+    };
+    /** The longest cached workspace root that contains `abs`, or undefined. */
+    function rootOfAbsolute(abs) {
+      const absPosix = toPosixPath(abs);
+      const lower = absPosix.toLowerCase();
+      let best;
+      for (const root of workspaceRoots) {
+        const rootPosix = toPosixPath(root);
+        if (!lower.startsWith(`${rootPosix.toLowerCase()}/`)) continue;
+        if (best === undefined || rootPosix.length > toPosixPath(best).length) best = root;
+      }
+      return best;
+    }
+    /** Strip the workspace root from an absolute row path; undefined when outside. */
+    function relativeFromAbsolute(root, abs) {
+      const rootPosix = toPosixPath(root);
+      const absPosix = toPosixPath(abs);
+      if (samePath(absPosix, rootPosix)) return '';
+      if (!absPosix.toLowerCase().startsWith(`${rootPosix.toLowerCase()}/`)) return undefined;
+      return absPosix.slice(rootPosix.length + 1);
+    }
+
+    /**
+     * The clicked row of the native files tree, across renderer builds:
+     *  - older builds mark rows as `li[data-files-entry="file"][data-files-path]`;
+     *  - current builds render `div.explorerRow` whose `title` carries the
+     *    absolute path, with `explorerDir` marking directories.
+     * Directory rows return `undefined` so the tree's own expand/collapse and
+     * the context menu keep working untouched.
+     */
+    function nativeFileRow(target) {
+      const legacy = target?.closest?.('li[data-files-entry="file"][data-files-path]');
+      if (legacy !== null && legacy !== undefined) return legacy;
+      const modern = target?.closest?.('[class*="explorerRow"][title]');
+      if (modern !== null && modern !== undefined
+        && !(typeof modern.className === 'string' && modern.className.includes('explorerDir'))) return modern;
+      return undefined;
+    }
+
     /** One persisted PDF visibility preference for every source tab in a workspace. */
     const pdfVisibilityStores = new Map();
     function pdfVisibilityStore(workspace) {
@@ -2724,6 +2780,7 @@ window.__ModuleLoader__.load({
         }
         if (flash !== undefined) body.append(el('div', `dsh-ol-sb-note ${flash.kind}`, flash.text));
         for (const record of visibleWorkspaces) {
+          rememberRoot(record.localDir);
           const nativeTitle = workspaceItemOf(ctx, record.localDir)?.title?.trim();
           const folderName = record.localDir.replace(/\/+$/u, '').split('/').pop();
           const workspace = { ...record, projectName: nativeTitle && nativeTitle !== folderName ? nativeTitle : record.projectName };
@@ -3062,6 +3119,7 @@ window.__ModuleLoader__.load({
          * Session there, which is what made previous chats disappear on reopen.
          */
         async function enterWorkspace(workspaceId, localDir, options = {}) {
+          rememberRoot(localDir);
           let sessionId = options.sessionId;
           if (options.fresh !== true && sessionId === undefined) {
             sessionId = resumeSessionId(ctx, localDir);
@@ -3318,32 +3376,35 @@ window.__ModuleLoader__.load({
           const onClick = (event) => {
             if (event.button !== undefined && event.button !== 0) return;
             const target = event.target instanceof Element ? event.target : undefined;
-            const row = target?.closest('li[data-files-entry="file"][data-files-path]');
-            if (row === null || row === undefined) return;
-            const absPath = row.getAttribute('data-files-path');
-            if (absPath === null || absPath.length === 0) return;
+            // The row's @文件 chip has its own mention handler; leave it alone.
+            if (target?.closest?.('button[class*="explorerRef"]')) return;
+            const row = nativeFileRow(target);
+            if (row === undefined) return;
+            const absPath = row.getAttribute('data-files-path') ?? row.getAttribute('title');
+            if (absPath === null || absPath === undefined || absPath.length === 0) return;
             const pane = row.closest('[data-dockkit-pane]');
             if (pane === null) return;
             const service = sidebarService();
             const sessionId = service?.mounted?.getSnapshot?.();
-            if (typeof sessionId !== 'string' || !isKnownSession(sessionId)) return;
+            if (typeof sessionId !== 'string') return;
+            // Sessions opened outside the plugin are unknown to sessionDirs();
+            // the clicked path identifies the workspace and heals the map.
+            let root = sessionDirs()[sessionId];
+            if (typeof root !== 'string') {
+              const healed = rootOfAbsolute(absPath);
+              if (healed === undefined) return;
+              root = healed;
+              rememberSession(sessionId, root);
+            }
             const tabs = service.tabsIn?.(sessionId) ?? [];
             const filesTab = tabs.find((tab) => tab.kind === 'files');
             if (filesTab === undefined || paneOfTab(filesTab.id) !== pane) return;
 
-            // data-files-path is absolute. Convert it to the same session-relative
-            // path the Sidebar's own tree uses; an absolute path would be rejected
-            // by the host's workspace containment check.
-            const rawRoot = row.closest('[data-files-root]')?.getAttribute('data-files-root')
-              ?? sessionDirs()[sessionId];
-            const abs = String(absPath).replace(/\\/g, '/');
-            const root = typeof rawRoot === 'string' ? rawRoot.replace(/\\/g, '/').replace(/\/+$/u, '') : '';
-            let rel;
-            if (root.length > 0 && abs === root) return;
-            if (root.length > 0 && abs.startsWith(`${root}/`)) rel = abs.slice(root.length + 1);
-            else if (!abs.startsWith('/')) rel = abs;
-            else return;
-            if (rel.length === 0) return;
+            // Both row contracts carry an absolute path. Convert it to the same
+            // session-relative path the Sidebar's own tree uses; an absolute
+            // path would be rejected by the host's workspace containment check.
+            const rel = relativeFromAbsolute(root, absPath);
+            if (rel === undefined || rel.length === 0) return;
             const address = fileAddress(sessionId, rel);
 
             const panes = visibleDockPanes();
@@ -3378,17 +3439,19 @@ window.__ModuleLoader__.load({
             } catch { return; }
 
             // Only suppress the tree's own handler after the direct open worked.
+            // Window capture precedes every document- and row-level listener,
+            // including delegated native handlers and React's root listener.
             event.preventDefault();
             event.stopPropagation();
             if (createdSplit) scheduleSplitRatio(sessionId);
           };
-          document.addEventListener('click', onClick, true);
+          window.addEventListener('click', onClick, true);
           document.addEventListener('contextmenu', onContextMenu, true);
           document.addEventListener('click', onDocumentClick, true);
           document.addEventListener('keydown', onKeyDown, true);
           document.addEventListener('scroll', onScroll, true);
           return () => {
-            document.removeEventListener('click', onClick, true);
+            window.removeEventListener('click', onClick, true);
             document.removeEventListener('contextmenu', onContextMenu, true);
             document.removeEventListener('click', onDocumentClick, true);
             document.removeEventListener('keydown', onKeyDown, true);

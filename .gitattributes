@@ -1,0 +1,4 @@
+# Normalize every text file to LF: the `bin` script must keep a clean shebang
+# (pnpm refuses CRLF bin files) and packaged scripts must not carry CR bytes.
+* text=auto eol=lf
+*.png binary

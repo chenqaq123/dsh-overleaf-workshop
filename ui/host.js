@@ -22,10 +22,13 @@ function safePath(localDir, path) {
 function mainFileUnder(localDir, value) {
   if (typeof value !== 'string' || value.length === 0) return undefined;
   let rel = value.replace(/\\/g, '/').replace(/^(?:\.\/)+/u, '');
-  if (rel.startsWith('/')) {
-    const root = localDir.replace(/\/+$/u, '');
-    if (!rel.startsWith(`${root}/`)) throw new Error('主文件必须位于当前工作区内。');
+  const root = localDir.replace(/[\\/]+$/u, '').replace(/\\/g, '/');
+  // Windows paths compare case-insensitively; drive letters rarely match case.
+  const probe = (candidate) => (process.platform === 'win32' ? candidate.toLowerCase() : candidate);
+  if (probe(rel).startsWith(`${probe(root)}/`)) {
     rel = rel.slice(root.length + 1);
+  } else if (rel.startsWith('/') || /^[A-Za-z]:\//u.test(rel)) {
+    throw new Error('主文件必须位于当前工作区内。');
   }
   if (rel.length === 0 || rel.split('/').includes('..') || !rel.toLowerCase().endsWith('.tex')) {
     throw new Error('主文件必须是工作区内的 .tex 文件。');
