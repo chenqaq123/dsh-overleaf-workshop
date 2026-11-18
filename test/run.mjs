@@ -21,6 +21,7 @@ import { OverleafLive, connectedCollaborators } from '../lib/live.js';
 import { LiveManager } from '../lib/live-manager.js';
 import { createWorkspaceFile, createWorkspaceFolder } from '../lib/workspace-files.js';
 import { writeProjectState, readProjectState } from '../lib/store.js';
+import { registerOverleafTools } from '../lib/tools.js';
 
 const sleep = (ms) => new Promise(resolveSleep => setTimeout(resolveSleep, ms));
 import { OverleafSync } from '../lib/sync.js';
@@ -39,6 +40,29 @@ const test = (name, fn) => Promise.resolve()
 
 const client = new OverleafClient({ baseUrl });
 const sync = new OverleafSync({ createClient: () => client });
+
+await test('overleaf tools keep their executable handlers', async () => {
+  const registered = new Map();
+  const ctx = {
+    tools: {
+      register: (definition) => {
+        registered.set(definition.name, definition);
+        return () => {};
+      },
+    },
+  };
+  const host = { tools: { defineTool: (definition) => definition } };
+  const runtime = {
+    ctx: {},
+    projectTable: { list: () => [] },
+    secrets: { list: () => [] },
+  };
+
+  registerOverleafTools(ctx, host, runtime);
+  assert.equal(registered.size, 6);
+  const result = await registered.get('overleaf_projects').execute({}, {});
+  assert.match(result, /No Overleaf server has a session yet/);
+});
 
 await test('login scrapes identity, csrf and merges Set-Cookie', async () => {
   const identity = await client.login('overleaf_session2=s%3Amock-session.sig');
