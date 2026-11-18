@@ -811,6 +811,435 @@ await test('inline PDF reader fetches changed bytes and preserves file-service e
   assert.equal(reads, 1, 'failed authorization must not fall through to reading bytes');
 });
 
+await test('createOverleafLayout reserves the editor track and masks the dock while preparing a fresh session', async () => {
+  const source = readFileSync(new URL('../ui/client.js', import.meta.url), 'utf8');
+  assert.match(source,
+    /\.dsh-ol-flipped\[data-ol-preparing="true"\]>\[class\*="rightbarCol"\]\{opacity:0!important;pointer-events:none!important;visibility:hidden!important;/,
+    'preparing may mask only the right Dock');
+  assert.doesNotMatch(source,
+    /\.dsh-ol-flipped\[data-ol-preparing="true"\]>\[class\*="sidebarCol"\].*visibility:hidden/u,
+    'the persistent root sidebar must remain visible during session navigation');
+  const start = source.indexOf('    function createOverleafLayout(ctx) {');
+  const end = source.indexOf('\n    /**\n     * Mount the Overleaf section', start);
+  assert.ok(start > 0 && end > start, 'createOverleafLayout slice located');
+
+  const makeStyle = () => {
+    const props = new Map();
+    return {
+      gridTemplateColumns: '260px minmax(0px, 1fr) minmax(0px, 0px)',
+      display: '',
+      left: '',
+      setProperty: (k, v) => props.set(k, v),
+      getPropertyValue: (k) => props.get(k) ?? '',
+      removeProperty: (k) => props.delete(k),
+    };
+  };
+  const makeClassList = () => {
+    const set = new Set();
+    return {
+      add: (c) => set.add(c),
+      remove: (c) => set.delete(c),
+      contains: (c) => set.has(c),
+      toggle: (c, force) => (force ? set.add(c) : set.delete(c)),
+    };
+  };
+  const attrs = new Map();
+  const children = [];
+  const frame = {
+    clientWidth: 1460,
+    isConnected: true,
+    style: makeStyle(),
+    classList: makeClassList(),
+    setAttribute: (k, v) => attrs.set(k, String(v)),
+    removeAttribute: (k) => attrs.delete(k),
+    hasAttribute: (k) => attrs.has(k),
+    getAttribute: (k) => attrs.get(k) ?? null,
+    append: (node) => { node.parentElement = frame; if (!children.includes(node)) children.push(node); },
+  };
+  const centerCol = { parentElement: frame };
+  const timers = new Set();
+  const observers = new Set();
+  const notifyFrameMutated = () => {
+    for (const obs of observers) obs.enqueue({ target: frame, type: 'attributes' });
+  };
+  frame.classList.add = ((orig) => (c) => { orig(c); notifyFrameMutated(); })(frame.classList.add);
+  frame.style.setProperty = ((orig) => (k, v) => { orig(k, v); notifyFrameMutated(); })(frame.style.setProperty);
+  const context = {
+    LAYOUT_CSS: '.dsh-ol-flipped{}',
+    EDITOR_CSS: '.dsh-ol-cm{}',
+    FILE_TREE_CSS: '.dsh-ol-flipped [data-files-root]{}',
+    CHAT_WIDTH: 400,
+    decorateFileTreeRows: () => {},
+    MutationObserver: class {
+      constructor(cb) { this.cb = cb; this.records = []; this.scheduled = false; }
+      observe() { observers.add(this); }
+      disconnect() { observers.delete(this); this.records = []; }
+      takeRecords() { const out = this.records; this.records = []; return out; }
+      enqueue(rec) {
+        this.records.push(rec);
+        if (!this.scheduled) {
+          this.scheduled = true;
+          queueMicrotask(() => {
+            this.scheduled = false;
+            if (this.records.length > 0 && observers.has(this)) this.cb(this.takeRecords());
+          });
+        }
+      }
+    },
+    ResizeObserver: class { observe() {} disconnect() {} },
+    window: { addEventListener: () => {}, removeEventListener: () => {} },
+    document: {
+      head: { append: () => {} },
+      createElement: () => ({
+        className: '',
+        style: makeStyle(),
+        setAttribute: () => {},
+        addEventListener: () => {},
+        hasPointerCapture: () => false,
+        releasePointerCapture: () => {},
+        remove() { this.parentElement = null; },
+      }),
+      querySelector: (sel) => (sel === '[class*="centerCol"]' ? centerCol : null),
+    },
+    setTimeout: (fn) => { const id = { fn }; timers.add(id); return id; },
+    clearTimeout: (id) => timers.delete(id),
+  };
+
+  const createOverleafLayout = runInNewContext(`(${source.slice(start, end).trim()})`, context);
+  const layout = createOverleafLayout({});
+
+  // Fresh session before right panel opens (rightbarMax === 0): preparing locks
+  // the middle editor track at 800px (1460 - 260 - 400) and masks the dock.
+  layout.setPreparing(true, true);
+  assert.equal(frame.classList.contains('dsh-ol-flipped'), true);
+  assert.equal(frame.getAttribute('data-ol-preparing'), 'true');
+  assert.equal(frame.style.getPropertyValue('--dsh-ol-flipped-columns'),
+    '260px minmax(0px, 800px) minmax(400px, 1fr)',
+    'chat column must not expand across the window while the new session opens');
+
+  // Once the Files tab opens, rightbarMax becomes non-zero and endEnter lifts
+  // the mask with zero column track shift.
+  frame.style.gridTemplateColumns = '260px minmax(0px, 1fr) minmax(0px, 920px)';
+  layout.setPreparing(false, false);
+  assert.equal(frame.hasAttribute('data-ol-preparing'), false);
+  assert.equal(frame.style.getPropertyValue('--dsh-ol-flipped-columns'),
+    '260px minmax(0px, 800px) minmax(400px, 1fr)',
+    'lifting the preparing mask keeps the exact same column geometry');
+
+  // During an existing-session switch Harness briefly reports a closed native
+  // right track (0px). The Overleaf shell must retain the last geometry until
+  // the new session's Dock is mounted instead of collapsing the editor column.
+  frame.style.gridTemplateColumns = '260px minmax(0px, 1fr) minmax(0px, 0px)';
+  layout.refresh();
+  assert.equal(frame.style.getPropertyValue('--dsh-ol-flipped-columns'),
+    '260px minmax(0px, 800px) minmax(400px, 1fr)',
+    'a transient native 0px right track must not move the editor edge');
+  frame.style.gridTemplateColumns = '260px minmax(0px, 1fr) minmax(0px, 920px)';
+  layout.refresh();
+
+  // Flush microtasks to verify apply()'s own DOM writes never re-trigger the
+  // MutationObserver in an infinite microtask loop or schedule self-echoes.
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(timers.size, 0, 'takeRecords() drains self-mutations so no observer echo is scheduled');
+
+  layout.dispose();
+  assert.equal(frame.classList.contains('dsh-ol-flipped'), false);
+  assert.equal(timers.size, 0);
+});
+
+await test('fresh session entry pre-registers session mapping, resizes 25/75 before opening main.tex, and skips duplicate PDF tab', async () => {
+  const source = readFileSync(new URL('../ui/client.js', import.meta.url), 'utf8');
+  let pluginDef;
+  const savedStorage = new Map();
+  const columnHistory = [];
+  const events = [];
+
+  const makeStyle = (initialCols = '') => {
+    const props = new Map();
+    return {
+      gridTemplateColumns: initialCols,
+      display: '',
+      left: '',
+      setProperty: (k, v) => {
+        props.set(k, v);
+        if (k === '--dsh-ol-flipped-columns') columnHistory.push(v);
+      },
+      getPropertyValue: (k) => props.get(k) ?? '',
+      removeProperty: (k) => props.delete(k),
+    };
+  };
+  const makeNode = (tag = 'div') => {
+    const attrs = new Map();
+    const classes = new Set();
+    const node = {
+      tagName: tag.toUpperCase(),
+      className: '',
+      dataset: {},
+      children: [],
+      childElementCount: 0,
+      parentElement: null,
+      isConnected: true,
+      clientWidth: 1460,
+      scrollTop: 0,
+      style: makeStyle(),
+      classList: {
+        add: (c) => classes.add(c),
+        remove: (c) => classes.delete(c),
+        contains: (c) => classes.has(c),
+        toggle: (c, force) => (force ? classes.add(c) : classes.delete(c)),
+      },
+      setAttribute: (k, v) => attrs.set(k, String(v)),
+      getAttribute: (k) => attrs.get(k) ?? null,
+      hasAttribute: (k) => attrs.has(k),
+      removeAttribute: (k) => attrs.delete(k),
+      append: (...kids) => {
+        for (const kid of kids) {
+          if (kid && typeof kid === 'object') { kid.parentElement = node; node.children.push(kid); }
+        }
+        node.childElementCount = node.children.length;
+      },
+      prepend: (kid) => {
+        if (kid && typeof kid === 'object') { kid.parentElement = node; node.children.unshift(kid); }
+        node.childElementCount = node.children.length;
+      },
+      replaceChildren: () => { node.children = []; node.childElementCount = 0; },
+      remove: () => { node.parentElement = null; },
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      hasPointerCapture: () => false,
+      releasePointerCapture: () => {},
+      closest: () => null,
+      querySelector: () => null,
+      querySelectorAll: () => [],
+      getBoundingClientRect: () => ({ x: 0, y: 0, width: 400, height: 600, left: 0, bottom: 20 }),
+    };
+    return node;
+  };
+
+  const frame = makeNode('div');
+  frame.style = makeStyle('260px minmax(0px, 1fr) minmax(0px, 900px)');
+  const centerCol = makeNode('div');
+  centerCol.parentElement = frame;
+  const regionArea = makeNode('div');
+  const splitEl = makeNode('div');
+  splitEl.dataset.dockkitSplit = 'split-1';
+
+  const panes = [];
+  const tabs = [];
+  let mountedSession = 'old-session';
+  let selectedSession = 'old-session';
+  const resizedSplits = [];
+
+  const paneActions = {
+    resizeSplit: (sid, splitId, ratios) => {
+      events.push(`resizeSplit:${ratios.join('/')}`);
+      resizedSplits.push({ sid, splitId, ratios });
+    },
+    placeTab: (sid, tabId, paneId) => {
+      const tab = tabs.find((item) => item.id === tabId);
+      if (tab) tab.paneId = paneId;
+    },
+  };
+
+  const makePane = (id, x) => {
+    const pane = makeNode('div');
+    pane.dataset.dockkitPane = id;
+    pane.closest = (sel) => (sel === '[data-dockkit-split]' ? splitEl : null);
+    pane.getBoundingClientRect = () => ({ x, y: 0, width: 300, height: 600 });
+    return pane;
+  };
+
+  const rightbarCol = makeNode('div');
+  rightbarCol.querySelectorAll = (sel) => {
+    if (sel === '[data-dockkit-pane]') return panes;
+    if (sel === '[data-dockkit-tab]' || sel === '[data-sidebar-right-tab],[data-dockkit-tab]') {
+      return tabs.map((tab) => {
+        const chip = makeNode('div');
+        chip.setAttribute('data-dockkit-tab', tab.id);
+        chip.__reactFiber$test = { memoizedProps: { sessionId: mountedSession, actions: paneActions }, return: null };
+        chip.closest = (s) => {
+          if (s === '[data-dockkit-pane]') return panes.find((p) => p.dataset.dockkitPane === tab.paneId) ?? null;
+          return null;
+        };
+        chip.getBoundingClientRect = () => ({ x: 0, y: 0, width: 80, height: 28 });
+        return chip;
+      });
+    }
+    return [];
+  };
+
+  const sidebarRight = {
+    mounted: { getSnapshot: () => mountedSession },
+    tabsIn: () => tabs,
+    active: () => tabs.at(-1),
+    commandTarget: () => ({ tabId: 'guide-1' }),
+    openTabFromTarget: (kind) => {
+      events.push(`openTab:${kind}:preparing=${frame.getAttribute('data-ol-preparing')}`);
+      frame.style.gridTemplateColumns = '260px minmax(0px, 1fr) minmax(0px, 900px)';
+      if (panes.length === 0) panes.push(makePane('pane-left', 260));
+      tabs.splice(0, tabs.length, { id: 'files-1', kind: 'files', paneId: 'pane-left' });
+    },
+    split: () => {
+      events.push(`split:preparing=${frame.getAttribute('data-ol-preparing')}`);
+      panes.push(makePane('pane-right', 560));
+      tabs.push({ id: 'guide-seeded', kind: 'guide', paneId: 'pane-right' });
+      return 'pane-right';
+    },
+    openResource: (address, options) => {
+      events.push(`openResource:${address}:pane=${options?.paneId}:preparing=${frame.getAttribute('data-ol-preparing')}`);
+      tabs.push({ id: `tab-${tabs.length + 1}`, kind: options?.kind ?? 'doc', contentId: address, paneId: options?.paneId ?? 'pane-right' });
+    },
+    closeIn: (_sid, tabId) => {
+      events.push(`closeIn:${tabId}`);
+      const idx = tabs.findIndex((t) => t.id === tabId);
+      if (idx >= 0) tabs.splice(idx, 1);
+    },
+    focus: (tabId) => { events.push(`focus:${tabId}`); },
+  };
+
+  const mainRegistrations = [];
+  const ctx = {
+    get: (name) => (name === 'sidebarRight' ? sidebarRight : undefined),
+    effect: (fn) => { fn(); },
+    inject: () => {},
+    slots: {
+      inject: (slotName, cb) => { if (slotName === 'main') cb(); },
+      register: (meta, comp) => { mainRegistrations.push({ meta, comp }); return () => {}; },
+    },
+    layout: { selectPanel: () => {} },
+    connection: {
+      rpc: {
+        call: async (_ep, method) => {
+          if (method === 'overleafUi/prepare') {
+            return { ok: true, value: { localDir: '/demo/paper', bound: true, mainFile: 'main.tex', hasPdf: true } };
+          }
+          if (method === 'overleafUi/open') {
+            return { ok: true, value: { localDir: '/demo/paper', workspaceId: 'ws-1' } };
+          }
+          return { ok: true, value: { servers: 1, workspaces: [{ localDir: '/demo/paper', projectName: 'Paper', server: baseUrl, projectId: 'p1', bound: true, phase: 'idle', paused: false, collaborators: 0, pending: 0, error: '' }] } };
+        },
+      },
+    },
+    workspaces: {
+      list: {
+        getSnapshot: () => ({ items: [{ workspaceId: 'ws-1', path: '/demo/paper', sessionIds: ['old-session'] }], archivedSessionIds: [] }),
+        subscribe: () => () => {},
+      },
+    },
+    uiWorkspace: {
+      selection: { getSnapshot: () => ({ sessionId: selectedSession }), subscribe: () => () => {} },
+      openWorkspace: async (_wsId, onSession) => {
+        // Fresh session initially has its rightbar closed (rightbarMax === 0)
+        // and workspaces.list does not yet contain new-session!
+        frame.style.gridTemplateColumns = '260px minmax(0px, 1fr) minmax(0px, 0px)';
+        selectedSession = 'new-session';
+        onSession('new-session');
+        const sessionsMap = JSON.parse(savedStorage.get('dsh-overleaf:sessions') ?? '{}');
+        assert.equal(sessionsMap['new-session'], '/demo/paper',
+          'session mapping must be stored synchronously inside openWorkspace callback');
+        assert.equal(frame.getAttribute('data-ol-preparing'), 'true',
+          'preparing mask must already be active during openWorkspace');
+      },
+      openSession: async (id) => {
+        selectedSession = id;
+        mountedSession = id;
+        tabs.length = 0;
+        panes.length = 0;
+      },
+    },
+  };
+
+  const pendingTimeouts = new Set();
+  const vmWindow = {
+    innerWidth: 1460,
+    innerHeight: 900,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => {},
+    __ModuleLoader__: {
+      load: ({ factory }) => {
+        pluginDef = factory((mod) => {
+          if (mod === 'react') {
+            return {
+              createElement: () => null,
+              forwardRef: (fn) => fn,
+              useState: (v) => [typeof v === 'function' ? v() : v, () => {}],
+              useEffect: () => {},
+              useCallback: (fn) => fn,
+              useRef: (v) => ({ current: v }),
+              useLayoutEffect: () => {},
+              useImperativeHandle: () => {},
+              useSyncExternalStore: (_s, get) => get(),
+            };
+          }
+          return {};
+        });
+      },
+    },
+  };
+
+  runInNewContext(source, {
+    window: vmWindow,
+    CustomEvent: class { constructor(type, init) { this.type = type; this.detail = init?.detail; } },
+    Element: class {},
+    Node: class {},
+    AbortController,
+    MutationObserver: class { observe() {} disconnect() {} },
+    ResizeObserver: class { observe() {} disconnect() {} },
+    localStorage: {
+      getItem: (k) => savedStorage.get(k) ?? null,
+      setItem: (k, v) => savedStorage.set(k, String(v)),
+      removeItem: (k) => savedStorage.delete(k),
+    },
+    requestAnimationFrame: (cb) => { setImmediate(() => cb(0)); return 1; },
+    cancelAnimationFrame: () => {},
+    setTimeout: (fn, ms) => {
+      if (ms >= 200) { const fake = {}; pendingTimeouts.add(fake); return fake; }
+      return setTimeout(fn, Math.min(ms ?? 0, 5));
+    },
+    clearTimeout: (id) => { pendingTimeouts.delete(id); clearTimeout(id); },
+    setInterval: () => ({}),
+    clearInterval: () => {},
+    console,
+    document: {
+      visibilityState: 'visible',
+      head: { append: () => {} },
+      body: { append: () => {} },
+      documentElement: { classList: { toggle: () => {}, remove: () => {} } },
+      createElement: (tag) => makeNode(tag),
+      createElementNS: (_ns, tag) => makeNode(tag),
+      createTextNode: (t) => ({ textContent: t }),
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      querySelector: (sel) => {
+        if (sel === '[class*="centerCol"]') return centerCol;
+        if (sel === '[class*="regionArea"]') return regionArea;
+        if (sel === '[class*="rightbarCol"]') return rightbarCol;
+        return null;
+      },
+      querySelectorAll: () => [],
+    },
+  });
+
+  pluginDef.apply(ctx);
+  const services = mainRegistrations[0].meta.inject().services;
+  await services.enterWorkspace('ws-1', '/demo/paper', { fresh: true });
+
+  assert.ok(columnHistory.length > 0 && columnHistory.every((cols) => cols.includes('minmax(0px, 800px)')),
+    `columns never collapsed to 0px during fresh session switch: ${JSON.stringify(columnHistory)}`);
+  assert.equal(frame.hasAttribute('data-ol-preparing'), false, 'preparing mask lifted on completion');
+
+  const resizeIdx = events.findIndex((e) => e.startsWith('resizeSplit:0.25/0.75'));
+  const openTexIdx = events.findIndex((e) => e.startsWith('openResource:dsh-resource://file/session/new-session/main.tex'));
+  assert.ok(resizeIdx >= 0 && openTexIdx > resizeIdx,
+    `25/75 split ratio must be set before main.tex mounts: ${JSON.stringify(events)}`);
+  assert.ok(!events.some((e) => e.includes('output.pdf')),
+    `standalone output.pdf tab must not auto-open when main.tex exists: ${JSON.stringify(events)}`);
+  assert.ok(events.some((e) => e === 'closeIn:guide-seeded'),
+    `seeded guide tab pruned before curtain lifts: ${JSON.stringify(events)}`);
+});
+
 mock.server.close();
+mock.server.closeAllConnections?.();
 rmSync(scratch, { recursive: true, force: true });
 console.log(`\n${passed} scenarios passed`);

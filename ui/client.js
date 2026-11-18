@@ -76,6 +76,15 @@ window.__ModuleLoader__.load({
       .dsh-ol-flipped>[class*="sidebarCol"]{grid-column:1!important;grid-row:1!important}
       .dsh-ol-flipped>[class*="rightbarCol"]{grid-column:2!important;grid-row:1!important}
       .dsh-ol-flipped>[class*="centerCol"]{grid-column:3!important;grid-row:1!important}
+      .dsh-ol-flipped,.dsh-ol-flipped>[class*="sidebarCol"],.dsh-ol-flipped>[class*="centerCol"],.dsh-ol-flipped [data-sidebar-right-panel],.dsh-ol-flipped [data-dockkit-split],.dsh-ol-flipped [data-dockkit-pane]{transition:none!important}
+      .dsh-ol-flipped[data-ol-preparing="true"]>[class*="rightbarCol"]{transition:none!important}
+      /* The host sidebar is the persistent root navigation (DeepSeek, Workspaces,
+         and the session list). Keep it mounted and visible during navigation;
+         only the right Dock is allowed to be masked while its session panes
+         settle. Hiding sidebarCol here makes the entire left edge flash. */
+      .dsh-ol-flipped[data-ol-preparing="true"]>[class*="rightbarCol"]{opacity:0!important;pointer-events:none!important;visibility:hidden!important;transition:none!important}
+      .dsh-ol-flipped>[class*="sidebarCol"]{visibility:visible!important;opacity:1!important;pointer-events:auto!important;transition:none!important}
+      .dsh-ol-flipped:not([data-ol-preparing="true"])>[class*="rightbarCol"]{visibility:visible!important;transition:opacity .12s ease-out!important}
       .dsh-ol-flipped>[class*="rightbarCol"] [data-sidebar-right-panel][data-sidebar-right-open="true"]{width:100%!important;--dsh-sidebar-width:100%!important}
       .dsh-ol-flipped>[class*="handle"][data-side="rightbar"]{display:none!important}
       .dsh-ol-flip-handle{display:none;position:absolute;top:0;bottom:0;width:8px;margin-left:-4px;cursor:col-resize;touch-action:none;z-index:12}
@@ -163,14 +172,13 @@ window.__ModuleLoader__.load({
       .dsh-ol-flipped [data-files-root] li[data-files-entry]>button>svg:not([data-dsh-file-icon]){display:none}
       .dsh-ol-flipped [data-files-root] li[data-files-entry]>button>[data-dsh-file-icon]{display:inline-flex;align-items:center;justify-content:center;flex:none;width:19px;height:20px;margin-right:7px;color:var(--dsw-alias-label-secondary,GrayText)}
       .dsh-ol-flipped [data-files-root] li[data-files-entry]>button>[data-dsh-file-icon] svg{display:block;width:18px;height:18px;overflow:visible}
-      .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-file-kind=folder]>button>[data-dsh-file-icon]{color:var(--dsw-alias-state-idle-primary,#CBA6F7)}
-      .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-file-kind=tex]>button>[data-dsh-file-icon],
-      .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-file-kind=bib]>button>[data-dsh-file-icon]{color:var(--dsw-alias-link,#89B4FA)}
-      .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-file-kind=sty]>button>[data-dsh-file-icon]{color:var(--dsw-alias-state-idle-primary,#CBA6F7)}
-      .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-file-kind=pdf]>button>[data-dsh-file-icon]{color:var(--dsw-alias-state-error-primary,#F38BA8)}
-      .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-file-kind=image]>button>[data-dsh-file-icon]{color:var(--dsw-alias-state-success-primary,#A6E3A1)}
-      .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-file-kind=log]>button>[data-dsh-file-icon]{color:var(--dsw-alias-state-warn-primary,#F9E2AF)}
-      .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-file-kind=folder][data-dsh-expanded=true]>button>[data-dsh-file-icon]{color:var(--dsw-alias-link,#89B4FA)}
+      .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-file-kind=folder]>button>[data-dsh-file-icon]{color:#CBA6F7}
+      .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-file-kind=tex]>button>[data-dsh-file-icon]{color:#89B4FA}
+      .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-file-kind=sty]>button>[data-dsh-file-icon]{color:#89B4FA}
+      .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-file-kind=pdf]>button>[data-dsh-file-icon]{color:#F38BA8}
+      .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-file-kind=image]>button>[data-dsh-file-icon]{color:#A6E3A1}
+      .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-file-kind=log]>button>[data-dsh-file-icon]{color:#F9E2AF}
+      .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-file-kind=folder][data-dsh-expanded=true]>button>[data-dsh-file-icon]{color:#89B4FA}
       .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-file-kind=folder]>button{font-weight:570}
       .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-file-kind=folder][data-dsh-expanded=true]>button{color:var(--dsw-alias-label-primary,CanvasText)}
       .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-selected=true]>button{background:color-mix(in srgb,var(--dsw-alias-state-idle-primary,#CBA6F7) 13%,transparent);color:var(--dsw-alias-label-primary,CanvasText)}
@@ -240,6 +248,10 @@ window.__ModuleLoader__.load({
       const holder = document.createElement('span');
       holder.setAttribute('data-dsh-file-icon', '');
       holder.setAttribute('aria-hidden', 'true');
+      holder.style.color = ({
+        folder: '#CBA6F7', tex: '#89B4FA', sty: '#89B4FA',
+        pdf: '#F38BA8', image: '#A6E3A1', log: '#F9E2AF',
+      })[kind] ?? '#B8B9C9';
       const svg = document.createElementNS(FILE_TREE_ICON_NS, 'svg');
       svg.setAttribute('viewBox', '0 0 24 24');
       svg.setAttribute('fill', 'none');
@@ -252,41 +264,56 @@ window.__ModuleLoader__.load({
         appendSvgPath(svg, 'M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z');
         appendSvgPath(svg, 'm5 17 4-4 3 3 2-2 5 5M8 9.2h.01');
       } else {
-        appendSvgPath(svg, 'M6 3.5h8l4 4v13H6a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2z');
-        appendSvgPath(svg, 'M14 3.5v4h4', { width: '1.2' });
-        if (kind === 'pdf') appendSvgPath(svg, 'M7.5 16h7.5M7.5 18.5h5', { width: '1.2' });
-        else if (kind === 'log') appendSvgPath(svg, 'M7.5 12h7M7.5 15h7M7.5 18h4', { width: '1.2' });
-        else if (kind === 'bib') appendSvgPath(svg, 'M8 12h.01M8 15h.01M8 18h.01M10.5 12h4.5M10.5 15h4.5M10.5 18h3', { width: '1.2' });
-        else if (kind === 'tex') appendSvgPath(svg, 'M8 12h6M8 15h4M8 18h6', { width: '1.2' });
-        else if (kind === 'sty') appendSvgPath(svg, 'M8 13h6M8 16h4', { width: '1.2' });
+        // Use a compact Material-style file silhouette: the type is carried by
+        // one restrained color and one simple mark, so it remains legible at
+        // the native 16–18px tree size.
+        const file = document.createElementNS(FILE_TREE_ICON_NS, 'path');
+        file.setAttribute('d', 'M6 2.75h7.2L19.25 8v12.5A2.75 2.75 0 0 1 16.5 23h-10A2.75 2.75 0 0 1 3.75 20.5v-15A2.75 2.75 0 0 1 6 2.75Z');
+        file.setAttribute('fill', 'currentColor');
+        svg.append(file);
+        appendSvgPath(svg, 'M13.25 3v4.1a2 2 0 0 0 2 2h3.8', {
+          stroke: 'var(--dsw-alias-bg-primary,#20202d)', width: '1.25',
+        });
+        const mark = kind === 'image' ? 'M6.5 18.5l3.3-3.5 2.2 2 2.2-2.5 3.3 4'
+          : kind === 'pdf' ? 'M7.5 16.5h7M7.5 19h4.5'
+            : kind === 'tex' || kind === 'sty' ? 'M7.5 14h7M11 14v5M9.5 19h3'
+                : 'M7.5 15h7M7.5 18h5.5';
+        appendSvgPath(svg, mark, {
+          stroke: 'var(--dsw-alias-bg-primary,#20202d)', width: '1.25',
+        });
       }
       holder.append(svg);
       return holder;
     }
 
     function decorateFileTreeRows() {
-      document.querySelectorAll('.dsh-ol-flipped [data-files-root] li[data-files-entry]').forEach((row) => {
-        const button = row.querySelector(':scope > button');
-        if (button === null) return;
-        const kind = fileTreeKind(row);
-        const expanded = button.getAttribute('aria-expanded') === 'true'
-          || row.getAttribute('aria-expanded') === 'true';
-        const selected = button.getAttribute('aria-current') === 'page'
-          || button.getAttribute('aria-selected') === 'true'
-          || row.classList.contains('selected')
-          || row.classList.contains('active');
-        row.dataset.dshFileKind = kind;
-        row.dataset.dshExpanded = expanded ? 'true' : 'false';
-        row.dataset.dshSelected = selected ? 'true' : 'false';
-        const existing = button.querySelector(':scope > [data-dsh-file-icon]');
-        if (existing !== null
-          && existing.dataset.dshFileIconKind === kind
-          && existing.dataset.dshFileIconExpanded === (expanded ? 'true' : 'false')) return;
-        if (existing !== null) existing.remove();
-        const icon = makeFileTreeIcon(kind, expanded);
-        icon.dataset.dshFileIconKind = kind;
-        icon.dataset.dshFileIconExpanded = expanded ? 'true' : 'false';
-        button.prepend(icon);
+      document.querySelectorAll('[data-files-root]').forEach((root) => {
+        // The host can move the Files tree outside the flipped layout frame.
+        // Mark the active tree itself so the decoration survives that move.
+        root.setAttribute('data-dsh-overleaf-files', '');
+        root.querySelectorAll('li[data-files-entry]').forEach((row) => {
+          const button = row.querySelector('button');
+          if (button === null) return;
+          const kind = fileTreeKind(row);
+          const expanded = button.getAttribute('aria-expanded') === 'true'
+            || row.getAttribute('aria-expanded') === 'true';
+          const selected = button.getAttribute('aria-current') === 'page'
+            || button.getAttribute('aria-selected') === 'true'
+            || row.classList.contains('selected')
+            || row.classList.contains('active');
+          row.dataset.dshFileKind = kind;
+          row.dataset.dshExpanded = expanded ? 'true' : 'false';
+          row.dataset.dshSelected = selected ? 'true' : 'false';
+          const existing = button.querySelector(':scope > [data-dsh-file-icon]');
+          if (existing !== null
+            && existing.dataset.dshFileIconKind === kind
+            && existing.dataset.dshFileIconExpanded === (expanded ? 'true' : 'false')) return;
+          if (existing !== null) existing.remove();
+          const icon = makeFileTreeIcon(kind, expanded);
+          icon.dataset.dshFileIconKind = kind;
+          icon.dataset.dshFileIconExpanded = expanded ? 'true' : 'false';
+          button.prepend(icon);
+        });
       });
     }
 
@@ -516,6 +543,15 @@ window.__ModuleLoader__.load({
     const DRAFT_PREFIX = 'dsh-overleaf:draft:';
     const workspaceIndexes = new Map();
     const workspacePollers = new Map();
+    const preparedWorkspaces = new Map();
+    function rememberPrepared(localDir, info) {
+      if (typeof localDir === 'string' && localDir.length > 0 && info !== undefined && info !== null) {
+        preparedWorkspaces.set(localDir, info);
+      }
+    }
+    function readPrepared(localDir) {
+      return typeof localDir === 'string' ? preparedWorkspaces.get(localDir) : undefined;
+    }
     const LATEX_SOURCE = /\.(tex|bib|sty|cls|def|tikz|pgf|ltx|clo|ins|bst)$/i;
     const LATEX_COMMANDS = [
       'part', 'chapter', 'section', 'subsection', 'subsubsection', 'paragraph',
@@ -1216,7 +1252,7 @@ window.__ModuleLoader__.load({
       const [error, setError] = useState('');
       const [notice, setNotice] = useState('');
       const [compile, setCompile] = useState(undefined);
-      const [hasPdf, setHasPdf] = useState(false);
+      const [hasPdf, setHasPdf] = useState(() => readPrepared(localPath)?.hasPdf === true);
       const pdfVisibility = pdfVisibilityStore(workspaceKey);
       const pdfOpen = useSyncExternalStore(pdfVisibility.subscribe, pdfVisibility.getSnapshot);
       const setPdfOpen = pdfVisibility.set;
@@ -1300,7 +1336,10 @@ window.__ModuleLoader__.load({
       useEffect(() => {
         if (sessionId === undefined || path === undefined) return undefined;
         void api('prepare', where())
-          .then((info) => setHasPdf(info.hasPdf === true))
+          .then((info) => {
+            rememberPrepared(info?.localDir ?? localPath, info);
+            setHasPdf(info.hasPdf === true);
+          })
           .catch(() => {});
         return undefined;
       }, [api, sessionId, compile]);
@@ -1508,6 +1547,9 @@ window.__ModuleLoader__.load({
           setCompile(result);
           if (result.status === 'success') {
             setNotice('编译成功，PDF 已更新。点「PDF」查看。');
+            if (typeof localPath === 'string') {
+              rememberPrepared(localPath, { ...readPrepared(localPath), localDir: localPath, bound: true, hasPdf: true });
+            }
             setHasPdf(true);
           } else setNotice('编译失败，见下方错误。');
           setError('');
@@ -1871,6 +1913,9 @@ window.__ModuleLoader__.load({
           const result = await api('compile', { local_path: workspace.localDir,
             ...(mainFile !== undefined ? { main_file: mainFile } : {}) });
           setCompile(result);
+          if (result.status === 'success') {
+            rememberPrepared(workspace.localDir, { ...readPrepared(workspace.localDir), localDir: workspace.localDir, bound: true, hasPdf: true });
+          }
           setNotice(result.status === 'success' ? '编译成功，PDF 已更新。' : '编译失败，见下方错误。');
         } catch (e) { setError(errorText(e)); } finally { setBusy(''); }
       }, [api, workspace.localDir, dirty, save, file?.path]);
@@ -2036,6 +2081,7 @@ window.__ModuleLoader__.load({
             setError('工作区尚未就绪，请重新打开一次这个项目。');
             return;
           }
+          pdfVisibilityStore(workspace.localDir).set(true);
           await enterWorkspace(item.workspaceId, workspace.localDir);
         } catch (e) { setError(errorText(e)); }
       };
@@ -2256,10 +2302,20 @@ window.__ModuleLoader__.load({
      */
     function createOverleafLayout(ctx) {
       const style = document.createElement('style');
-      style.textContent = LAYOUT_CSS + EDITOR_CSS + FILE_TREE_CSS;
+      // Keep the three style groups explicit: layout, editor and file tree.
+      // LAYOUT_CSS + EDITOR_CSS + FILE_TREE_CSS
+      // (The file-tree selectors are rebound to the active tree below.)
+      style.textContent = LAYOUT_CSS + EDITOR_CSS
+        + FILE_TREE_CSS
+          .replaceAll('.dsh-ol-flipped [data-files-root]', '[data-dsh-overleaf-files]')
+          .replaceAll('li[data-files-entry]>button', 'li[data-files-entry] button');
       document.head.append(style);
 
       let wanted = false;
+      let preparing = false;
+      let masking = false;
+      let prepareTimer;
+      let applying = false;
       let frame;
       let scheduled;
       let disposed = false;
@@ -2268,6 +2324,11 @@ window.__ModuleLoader__.load({
       let drag;
       /** Conversation width in the flipped layout; dragging the grip changes it. */
       let chatWidth = CHAT_WIDTH;
+      // Harness briefly reports the native right track as 0px while it swaps
+      // the mounted Session store. Keep the last Overleaf geometry through
+      // that transient state; otherwise the editor edge jumps left and back
+      // even though the panes themselves remain mounted.
+      let stableRightbar;
       // The harness's own divider assumes the panel is on the right: dragging it
       // away from the panel's edge grows the centre. With the tracks swapped the
       // pointer moves the other way, so a small divider of our own moves the
@@ -2313,58 +2374,82 @@ window.__ModuleLoader__.load({
 
       const apply = () => {
         scheduled = undefined;
-        if (disposed || !wanted) return;
-        const center = document.querySelector('[class*="centerCol"]');
-        const next = center?.parentElement ?? undefined;
-        if (next !== frame) {
-          frameObserver?.disconnect();
-          frame = next;
-          if (frame !== undefined) {
-            frameObserver = new MutationObserver(() => schedule());
-            frameObserver.observe(frame, {
-              attributes: true,
-              attributeFilter: ['style', 'class', 'aria-expanded', 'aria-current', 'aria-selected'],
-              childList: true,
-              subtree: true,
-            });
-            if (typeof ResizeObserver === 'function') {
-              resizeObserver?.disconnect();
-              resizeObserver = new ResizeObserver(() => schedule());
-              resizeObserver.observe(frame);
+        if (disposed || !wanted || applying) return;
+        applying = true;
+        try {
+          const center = document.querySelector('[class*="centerCol"]');
+          const next = center?.parentElement ?? undefined;
+          if (next !== frame) {
+            frameObserver?.disconnect();
+            if (frame?.hasAttribute?.('data-ol-preparing')) frame.removeAttribute('data-ol-preparing');
+            frame = next;
+            if (frame !== undefined) {
+              frameObserver = new MutationObserver(() => schedule());
+              frameObserver.observe(frame, {
+                attributes: true,
+                attributeFilter: ['style', 'class', 'aria-expanded', 'aria-current', 'aria-selected'],
+                childList: true,
+                subtree: true,
+              });
+              if (typeof ResizeObserver === 'function') {
+                resizeObserver?.disconnect();
+                resizeObserver = new ResizeObserver(() => schedule());
+                resizeObserver.observe(frame);
+              }
             }
           }
+          if (frame === undefined) {
+            if (grip.parentElement !== null && grip.parentElement !== undefined) hideGrip();
+            return;
+          }
+          const parsed = parse(frame.style.gridTemplateColumns);
+          if (parsed === undefined) {
+            if (frame.classList.contains('dsh-ol-flipped')) frame.classList.remove('dsh-ol-flipped');
+            if (frame.hasAttribute('data-ol-preparing')) frame.removeAttribute('data-ol-preparing');
+            if (frame.style.getPropertyValue('--dsh-ol-flipped-columns') !== '') {
+              frame.style.removeProperty('--dsh-ol-flipped-columns');
+            }
+            if (frame.style.getPropertyValue('--dsh-ol-flipped-handle') !== '') {
+              frame.style.removeProperty('--dsh-ol-flipped-handle');
+            }
+            if (grip.parentElement !== null && grip.parentElement !== undefined) hideGrip();
+            return;
+          }
+          const available = frame.clientWidth - parsed.sidebar - chatWidth;
+          // The native right track is capped at 70% of the window; the reference
+          // three-column layout gives the editor area the rest of the width and
+          // leaves the conversation a fixed 400px. While entering a fresh Session
+          // the host has not opened the right panel yet; reserve the middle track
+          // immediately so the conversation column never jumps left and back.
+          const reserveRightbar = preparing || parsed.rightbarMax > 0;
+          if (reserveRightbar) stableRightbar = Math.max(0, available);
+          const rightbar = reserveRightbar
+            ? Math.max(0, available)
+            : (stableRightbar === undefined ? 0 : stableRightbar);
+          const columns = `${parsed.sidebar}px minmax(0px, ${rightbar}px) minmax(400px, 1fr)`;
+          const handle = `${parsed.sidebar + rightbar}px`;
+          if (frame.style.getPropertyValue('--dsh-ol-flipped-columns') !== columns) {
+            frame.style.setProperty('--dsh-ol-flipped-columns', columns);
+          }
+          if (frame.style.getPropertyValue('--dsh-ol-flipped-handle') !== handle) {
+            frame.style.setProperty('--dsh-ol-flipped-handle', handle);
+          }
+          if (masking) {
+            if (frame.getAttribute('data-ol-preparing') !== 'true') frame.setAttribute('data-ol-preparing', 'true');
+          } else if (frame.hasAttribute('data-ol-preparing')) {
+            frame.removeAttribute('data-ol-preparing');
+          }
+          if (!frame.classList.contains('dsh-ol-flipped')) frame.classList.add('dsh-ol-flipped');
+          decorateFileTreeRows();
+          if (grip.parentElement !== frame) frame.append(grip);
+          if (grip.style.left !== handle) grip.style.left = handle;
+          const nextDisplay = rightbar > 0 && !frame.hasAttribute('data-rightbar-fullscreen')
+            ? 'block' : 'none';
+          if (grip.style.display !== nextDisplay) grip.style.display = nextDisplay;
+        } finally {
+          frameObserver?.takeRecords?.();
+          applying = false;
         }
-        if (frame === undefined) {
-          hideGrip();
-          return;
-        }
-        const parsed = parse(frame.style.gridTemplateColumns);
-        if (parsed === undefined) {
-          frame.classList.remove('dsh-ol-flipped');
-          frame.style.removeProperty('--dsh-ol-flipped-columns');
-          frame.style.removeProperty('--dsh-ol-flipped-handle');
-          hideGrip();
-          return;
-        }
-        const available = frame.clientWidth - parsed.sidebar - chatWidth;
-        // The native right track is capped at 70% of the window; the reference
-        // three-column layout gives the editor area the rest of the width and
-        // leaves the conversation a fixed 400px. Respect a closed right panel.
-        const rightbar = parsed.rightbarMax === 0 ? 0 : Math.max(0, available);
-        const columns = `${parsed.sidebar}px minmax(0px, ${rightbar}px) minmax(400px, 1fr)`;
-        const handle = `${parsed.sidebar + rightbar}px`;
-        if (frame.style.getPropertyValue('--dsh-ol-flipped-columns') !== columns) {
-          frame.style.setProperty('--dsh-ol-flipped-columns', columns);
-        }
-        if (frame.style.getPropertyValue('--dsh-ol-flipped-handle') !== handle) {
-          frame.style.setProperty('--dsh-ol-flipped-handle', handle);
-        }
-        frame.classList.add('dsh-ol-flipped');
-        decorateFileTreeRows();
-        if (grip.parentElement !== frame) frame.append(grip);
-        grip.style.left = handle;
-        grip.style.display = rightbar > 0 && !frame.hasAttribute('data-rightbar-fullscreen')
-          ? 'block' : 'none';
       };
 
       const schedule = () => {
@@ -2374,11 +2459,34 @@ window.__ModuleLoader__.load({
         scheduled = setTimeout(apply, 0);
       };
 
+      const setPreparing = (nextPreparing, nextMasking = false) => {
+        clearTimeout(prepareTimer);
+        prepareTimer = undefined;
+        if (disposed) return;
+        const prep = nextPreparing === true;
+        const mask = prep && nextMasking === true;
+        if (prep) {
+          prepareTimer = setTimeout(() => {
+            preparing = false;
+            masking = false;
+            apply();
+          }, 1800);
+        }
+        if (prep === preparing && mask === masking && (!prep || wanted)) return;
+        preparing = prep;
+        masking = mask;
+        if (prep && !wanted) wanted = true;
+        apply();
+      };
+
       const setActive = (active) => {
-        if (disposed || active === wanted) return;
-        wanted = active;
+        const nextActive = preparing ? true : active;
+        if (disposed || nextActive === wanted) return;
+        wanted = nextActive;
         if (!wanted) {
+          stableRightbar = undefined;
           frame?.classList.remove('dsh-ol-flipped');
+          frame?.removeAttribute('data-ol-preparing');
           frame?.style.removeProperty('--dsh-ol-flipped-columns');
           frame?.style.removeProperty('--dsh-ol-flipped-handle');
           frameObserver?.disconnect();
@@ -2400,6 +2508,7 @@ window.__ModuleLoader__.load({
       // it; re-find it when the section's DOM observer calls setActive again.
       return {
         setActive,
+        setPreparing,
         refresh() {
           if (!wanted) return;
           if (frame !== undefined && !frame.isConnected) frame = undefined;
@@ -2408,11 +2517,15 @@ window.__ModuleLoader__.load({
         },
         dispose() {
           disposed = true;
+          stableRightbar = undefined;
+          clearTimeout(prepareTimer);
+          document.documentElement?.removeAttribute?.('data-dsh-ol-preparing');
           window.removeEventListener('resize', onResize);
           frameObserver?.disconnect();
           resizeObserver?.disconnect();
           if (scheduled !== undefined) clearTimeout(scheduled);
           frame?.classList.remove('dsh-ol-flipped');
+          frame?.removeAttribute('data-ol-preparing');
           frame?.style.removeProperty('--dsh-ol-flipped-columns');
           frame?.style.removeProperty('--dsh-ol-flipped-handle');
           hideGrip();
@@ -2442,6 +2555,10 @@ window.__ModuleLoader__.load({
       host.className = 'dsh-ol-sb';
       host.setAttribute('aria-label', 'Overleaf 项目');
       const layout = createOverleafLayout(ctx);
+      // The native Files tree can be mounted before the selected-session
+      // service reports the Overleaf session. Keep decorating the active tree
+      // while this plugin is mounted so its icons do not depend on that race.
+      const fileTreeTimer = setInterval(decorateFileTreeRows, 1000);
 
       let snapshot = { workspaces: [] };
       // Match dsh-remote-ssh: the section starts closed and remembers the
@@ -2636,10 +2753,17 @@ window.__ModuleLoader__.load({
           .map((workspace) => String(workspace.workspaceId)));
       };
 
+      let entering = false;
       /** Whether the conversation on screen belongs to an Overleaf workspace. */
       const isOverleafActive = () => {
+        if (entering) return true;
         const sessionId = ctx.uiWorkspace?.selection?.getSnapshot?.().sessionId;
         if (sessionId === undefined) return false;
+        const knownDir = sessionDirs()[sessionId];
+        if (typeof knownDir === 'string'
+          && (workspaceRoots.has(knownDir) || snapshot.workspaces.some((entry) => sameDir(entry.localDir, knownDir)))) {
+          return true;
+        }
         const items = ctx.workspaces.list.getSnapshot?.().items ?? [];
         const workspace = items.find((item) => item.sessionIds?.includes(sessionId));
         return workspace !== undefined
@@ -2661,13 +2785,33 @@ window.__ModuleLoader__.load({
         }
       }
       const scheduleNativeGroups = () => {
-        if (disposed || hiddenFrame !== undefined) return;
+        if (disposed || entering || hiddenFrame !== undefined) return;
         hiddenFrame = setTimeout(syncNativeGroups, 0);
+      };
+
+      /** Update selection affordances without replacing the sidebar subtree. */
+      const updateSelectedSession = () => {
+        const current = ctx.uiWorkspace?.selection?.getSnapshot?.().sessionId;
+        for (const row of host.querySelectorAll('.dsh-ol-sb-session')) {
+          const selected = row.dataset.sessionId === current;
+          row.classList.toggle('current', selected);
+          row.setAttribute('aria-selected', String(selected));
+          row.setAttribute('aria-current', selected ? 'true' : 'false');
+        }
       };
 
       const syncMode = () => {
         layout.setActive(isOverleafActive());
         scheduleNativeGroups();
+      };
+
+      // The host keeps a separate right-sidebar presentation per Session. On
+      // a Session switch its cleanup reports `closeRightbar()` before the
+      // arriving Session reports `openRightbar()`, which toggles the outer
+      // AppFrame track for one render. Overleaf always uses that track for its
+      // editor/PDF shell, so keep the host track reserved across the handoff.
+      const holdRightbarTrack = () => {
+        try { ctx.layout?.openRightbar?.(true, false); } catch { /* optional host */ }
       };
 
       /** Show a short result under the section header, then fade it out. */
@@ -2683,15 +2827,26 @@ window.__ModuleLoader__.load({
         if (busy !== '') return;
         closeMenu();
         busy = `${key}:${workspace.localDir}`;
-        render();
+        // Session navigation changes the native selection and causes several
+        // sidebar notifications. Keep the visible directory intact until the
+        // navigation has committed; other actions can show their busy state.
+        const deferSidebarRender = key === 'session';
+        if (!deferSidebarRender) render();
         try {
           await action();
         } catch (error) {
           setFlash('error', `${workspace.projectName}：${errorText(error)}`);
         } finally {
           busy = '';
-          await refresh();
-          render();
+          if (key === 'session') {
+            // Session navigation already updates the native selection. The
+            // Overleaf list is a persistent shell, so only change its selected
+            // row instead of rebuilding the whole section after every click.
+            updateSelectedSession();
+          } else {
+            await refresh();
+            render();
+          }
         }
       }
 
@@ -2870,7 +3025,9 @@ window.__ModuleLoader__.load({
         if (list !== null && savedListScroll !== undefined) list.scrollTop = savedListScroll;
       }
 
-      const schedule = () => { if (!disposed && frame === undefined) frame = setTimeout(render, 0); };
+      const schedule = () => {
+        if (!disposed && !entering && frame === undefined) frame = setTimeout(render, 0);
+      };
 
       async function refresh() {
         if (disposed) return;
@@ -2918,12 +3075,21 @@ window.__ModuleLoader__.load({
       });
       let unsubscribeSelection;
       try {
-        unsubscribeSelection = ctx.uiWorkspace.selection?.subscribe?.(() => { syncMode(); schedule(); });
+        unsubscribeSelection = ctx.uiWorkspace.selection?.subscribe?.(() => {
+          syncMode();
+          // A selection update is a data change, not a reason to replace the
+          // left navigation shell. Workspace changes still use render().
+          updateSelectedSession();
+          if (!entering && !isOverleafActive()) schedule();
+        });
       } catch (error) {
         console.warn('[dsh-overleaf] session selection subscription failed:', error);
       }
       const timer = setInterval(() => {
-        if (document.visibilityState === 'visible') void refresh();
+        if (document.visibilityState === 'visible') {
+          decorateFileTreeRows();
+          void refresh();
+        }
       }, 4000);
       // A split can seed a second files page after the entry pass has run; keep
       // the editor pane free of it while an Overleaf Session is on screen.
@@ -2944,6 +3110,21 @@ window.__ModuleLoader__.load({
 
       return {
         refresh,
+        beginEnter({ maskDock = true } = {}) {
+          entering = true;
+          holdRightbarTrack();
+          layout.setPreparing(true, maskDock);
+          layout.setActive(true);
+        },
+        endEnter() {
+          entering = false;
+          holdRightbarTrack();
+          layout.setPreparing(false, false);
+          syncMode();
+          updateSelectedSession();
+          layout.refresh();
+        },
+        holdRightbarTrack,
         refreshLayout() { layout.refresh(); },
         dispose() {
           closeMenu();
@@ -2959,6 +3140,7 @@ window.__ModuleLoader__.load({
           unsubscribeSelection?.();
           clearInterval(timer);
           clearInterval(tidyTimer);
+          clearInterval(fileTreeTimer);
           clearTimeout(flashTimer);
           if (frame !== undefined) clearTimeout(frame);
           if (hiddenFrame !== undefined) clearTimeout(hiddenFrame);
@@ -3042,10 +3224,10 @@ window.__ModuleLoader__.load({
             if (filesPane !== undefined) {
               const splitId = sidebar.split?.(filesPane.dataset.dockkitPane);
               if (typeof splitId === 'string') {
-                await waitFor(() => visibleDockPanes().length >= 2);
+                await waitFor(() => visibleDockPanes().length >= 2, 600, 16);
               } else if (actions?.splitPane !== undefined) {
                 try { actions.splitPane(sessionId, filesPane.dataset.dockkitPane); } catch { /* no room to split */ }
-                await waitFor(() => visibleDockPanes().length >= 2);
+                await waitFor(() => visibleDockPanes().length >= 2, 600, 16);
               }
             }
             panes = visibleDockPanes();
@@ -3065,14 +3247,14 @@ window.__ModuleLoader__.load({
           const treeTab = leftFiles ?? filesTab;
           if (paneOfTab(treeTab.id) !== left) {
             try { actions?.placeTab?.(sessionId, treeTab.id, leftId, 0); } catch { /* leave it */ }
-            await wait(160);
+            await waitFor(() => paneOfTab(treeTab.id) === left, 240, 16);
           }
 
           for (const tab of sidebar.tabsIn?.(sessionId) ?? []) {
             if (tab.kind === 'files') continue;
             if (paneOfTab(tab.id)?.dataset.dockkitPane !== leftId) continue;
             try { actions?.placeTab?.(sessionId, tab.id, rightId); } catch { /* leave it */ }
-            await wait(80);
+            await waitFor(() => paneOfTab(tab.id)?.dataset.dockkitPane === rightId, 160, 16);
           }
 
           // A split seeds a default page; the editor pane must not keep either
@@ -3080,12 +3262,17 @@ window.__ModuleLoader__.load({
           const rightTabs = (sidebar.tabsIn?.(sessionId) ?? [])
             .filter((tab) => paneOfTab(tab.id)?.dataset.dockkitPane === rightId);
           if (rightTabs.some((tab) => tab.kind !== 'files' && tab.kind !== 'guide')) {
+            let closedAny = false;
             for (const tab of rightTabs) {
               if (tab.kind !== 'files' && tab.kind !== 'guide') continue;
-              try { sidebar.closeIn?.(sessionId, tab.id); } catch { /* it can stay */ }
+              try { sidebar.closeIn?.(sessionId, tab.id); closedAny = true; } catch { /* it can stay */ }
+            }
+            if (closedAny) {
+              await waitFor(() => !(sidebar.tabsIn?.(sessionId) ?? [])
+                .some((tab) => (tab.kind === 'files' || tab.kind === 'guide')
+                  && paneOfTab(tab.id)?.dataset.dockkitPane === rightId), 200, 16);
             }
           }
-          await wait(120);
 
           const split = left.closest('[data-dockkit-split]');
           if (split !== null && actions?.resizeSplit !== undefined) {
@@ -3109,6 +3296,8 @@ window.__ModuleLoader__.load({
           pruneEditorPanes(sessionId, sidebar);
         }
 
+        let activeEnterToken = 0;
+
         /**
          * Switch to a workspace and open one of its conversations.
          *
@@ -3119,125 +3308,208 @@ window.__ModuleLoader__.load({
          * Session there, which is what made previous chats disappear on reopen.
          */
         async function enterWorkspace(workspaceId, localDir, options = {}) {
+          const enterToken = ++activeEnterToken;
           rememberRoot(localDir);
+          const preparePromise = api('prepare', { local_path: localDir })
+            .then((result) => { rememberPrepared(localDir, result); return result; })
+            .catch((error) => { console.warn('[dsh-overleaf] prepare failed:', error); return readPrepared(localDir); });
+
           let sessionId = options.sessionId;
           if (options.fresh !== true && sessionId === undefined) {
             sessionId = resumeSessionId(ctx, localDir);
           }
-          if (options.fresh === true || sessionId === undefined) {
-            await ctx.uiWorkspace.openWorkspace(workspaceId, (id) => { sessionId = id; });
-            if (sessionId !== undefined) await ctx.uiWorkspace.openSession(sessionId);
-          } else {
-            await ctx.uiWorkspace.openSession(sessionId);
-          }
-          if (sessionId === undefined) throw new Error('工作区还没有可用的会话。');
-          rememberSession(sessionId, localDir);
-          await sidebarSection?.refresh();
 
-          const sidebar = sidebarService();
-          // Navigation commits on the next render. Acting before the Sidebar
-          // adopts the new Session would open files into the previous one.
-          if (sidebar?.mounted?.getSnapshot !== undefined) {
-            for (let index = 0; index < 30; index += 1) {
-              let mountedId;
-              try { mountedId = sidebar.mounted.getSnapshot(); } catch { mountedId = undefined; }
-              if (mountedId === sessionId) break;
-              await wait(100);
-            }
-          }
+          const sidebarBefore = sidebarService();
+          const currentSelected = ctx.uiWorkspace?.selection?.getSnapshot?.().sessionId;
+          const alreadyArranged = options.fresh !== true
+            && sessionId !== undefined
+            && currentSelected === sessionId
+            && sidebarBefore?.mounted?.getSnapshot?.() === sessionId
+            && visibleDockPanes().length >= 2;
 
-          let info;
-          try { info = await api('prepare', { local_path: localDir }); }
-          catch (error) { console.warn('[dsh-overleaf] prepare failed:', error); }
+          // Once an Overleaf layout is on screen, keep its tracks visible while
+          // Harness changes the selected conversation. Each conversation owns
+          // its tab store, but the files/editor columns can keep the same
+          // geometry; hiding them here is the source of the visible flash.
+          const preserveDock = !options.fresh
+            && !alreadyArranged
+            && sessionId !== undefined
+            && sidebarBefore?.mounted?.getSnapshot?.() !== undefined
+            && visibleDockPanes().length >= 2;
 
-          if (sidebar === undefined) {
-            console.warn('[dsh-overleaf] sidebarRight service is unavailable; skipping the auto-open');
-            return;
+          // Clicking the conversation that is already open must be a no-op.
+          // Calling openSession with the same id still makes Harness rebuild its
+          // root Sidebar, which flashes the DeepSeek header and Workspaces list.
+          if (alreadyArranged) return;
+
+          if (sessionId !== undefined && options.fresh !== true) {
+            rememberSession(sessionId, localDir);
           }
-          // The Sidebar adopts a Session's store in the render that follows the
-          // session switch; navigation commands throw until that commit lands.
-          const attempt = async (action) => {
-            for (let index = 0; index < 30; index += 1) {
-              try { await action(); return true; }
-              catch (error) { if (index === 29) console.warn('[dsh-overleaf] sidebar open failed:', error); }
-              await wait(100);
-            }
-            return false;
+          sidebarSection?.beginEnter({ maskDock: !alreadyArranged && !preserveDock });
+          const finishEnter = () => {
+            if (enterToken === activeEnterToken) sidebarSection?.endEnter();
           };
 
-          // Prefer the guide's replacement rule (as the files shortcut does), so
-          // the first open does not leave a "开始" tab next to the file tree.
-          const openFiles = () => {
-            const target = sidebar.commandTarget?.();
-            if (target !== undefined && target.tabId !== undefined
-              && typeof sidebar.openTabFromTarget === 'function') {
-              sidebar.openTabFromTarget('files', target);
+          try {
+            if (options.fresh === true || sessionId === undefined) {
+              await ctx.uiWorkspace.openWorkspace(workspaceId, (id) => {
+                sessionId = id;
+                if (typeof id === 'string') rememberSession(id, localDir);
+              });
+              if (sessionId !== undefined) {
+                rememberSession(sessionId, localDir);
+                await ctx.uiWorkspace.openSession(sessionId);
+              }
+            } else {
+              await ctx.uiWorkspace.openSession(sessionId);
+            }
+            // The outgoing Session may have reported its right Dock closed
+            // during the React commit. Reassert the Overleaf track before any
+            // new-session pane work can cause another outer-frame solve.
+            sidebarSection?.holdRightbarTrack?.();
+            if (sessionId === undefined) throw new Error('工作区还没有可用的会话。');
+            rememberSession(sessionId, localDir);
+            void sidebarSection?.refresh();
+
+            const sidebar = sidebarService();
+            // Navigation commits on the next render. Acting before the Sidebar
+            // adopts the new Session would open files into the previous one.
+            if (sidebar?.mounted?.getSnapshot !== undefined) {
+              await waitFor(() => {
+                try { return sidebar.mounted.getSnapshot() === sessionId; } catch { return false; }
+              }, 3000, 16);
+              sidebarSection?.holdRightbarTrack?.();
+            }
+
+            const info = await preparePromise;
+
+            if (sidebar === undefined) {
+              console.warn('[dsh-overleaf] sidebarRight service is unavailable; skipping the auto-open');
               return;
             }
-            sidebar.openTab('files');
-          };
-          await attempt(openFiles);
-          await wait(120);
-          // Establish the second pane before opening anything, then name it
-          // explicitly. Otherwise the first resource lands in the tree pane and
-          // only moves after arrangePanes runs, which is visible to the user.
-          let editorPane;
-          {
-            const tabs = sidebar.tabsIn?.(sessionId) ?? [];
-            const filesTab = tabs.find((tab) => tab.kind === 'files');
-            const filesPane = filesTab === undefined ? undefined : paneOfTab(filesTab.id);
-            if (filesPane !== undefined) {
-              editorPane = visibleDockPanes().find((candidate) => candidate !== filesPane);
-              if (editorPane === undefined) {
-                const splitId = sidebar.split?.(filesPane.dataset.dockkitPane);
-                if (typeof splitId === 'string') {
-                  await waitFor(() => visibleDockPanes().length >= 2);
+            // The Sidebar adopts a Session's store in the render that follows the
+            // session switch; navigation commands throw until that commit lands.
+            const attempt = async (action) => {
+              for (let index = 0; index < 80; index += 1) {
+                try { await action(); return true; }
+                catch (error) { if (index === 79) console.warn('[dsh-overleaf] sidebar open failed:', error); }
+                await wait(25);
+              }
+              return false;
+            };
+
+            const findFilesPane = () => {
+              const filesTab = (sidebar.tabsIn?.(sessionId) ?? []).find((tab) => tab.kind === 'files');
+              return filesTab === undefined ? undefined : paneOfTab(filesTab.id);
+            };
+
+            // Prefer the guide's replacement rule (as the files shortcut does), so
+            // the first open does not leave a "开始" tab next to the file tree.
+            const openFiles = () => {
+              const target = sidebar.commandTarget?.();
+              if (target !== undefined && target.tabId !== undefined
+                && typeof sidebar.openTabFromTarget === 'function') {
+                sidebar.openTabFromTarget('files', target);
+                return;
+              }
+              sidebar.openTab('files');
+            };
+            if (findFilesPane() === undefined) {
+              await attempt(openFiles);
+              await waitFor(() => findFilesPane() !== undefined, 400, 16);
+            }
+            // Establish the second pane and its 25/75 ratio before opening any
+            // resource, so the source editor and inline PDF measure their final
+            // width on first mount without jumping from the tree column or 50/50.
+            let editorPane;
+            {
+              let filesPane = findFilesPane();
+              if (filesPane !== undefined) {
+                editorPane = visibleDockPanes().find((candidate) => candidate !== filesPane);
+                if (editorPane === undefined && !preserveDock) {
+                  const splitId = sidebar.split?.(filesPane.dataset.dockkitPane);
+                  if (typeof splitId === 'string') {
+                    await waitFor(() => visibleDockPanes().length >= 2, 600, 16);
+                  } else {
+                    const actions = findPaneActions(sessionId);
+                    if (actions?.splitPane !== undefined) {
+                      try { actions.splitPane(sessionId, filesPane.dataset.dockkitPane); } catch { /* no room to split */ }
+                      await waitFor(() => visibleDockPanes().length >= 2, 600, 16);
+                    }
+                  }
+                  filesPane = findFilesPane() ?? filesPane;
                   editorPane = visibleDockPanes().find((candidate) => candidate !== filesPane);
+                }
+                const split = filesPane?.closest('[data-dockkit-split]');
+                const actions = findPaneActions(sessionId);
+                if (!preserveDock && editorPane !== undefined && split !== null && split !== undefined && actions?.resizeSplit !== undefined) {
+                  try {
+                    actions.resizeSplit(sessionId, split.dataset.dockkitSplit,
+                      [FILES_PANE_RATIO, 1 - FILES_PANE_RATIO]);
+                  } catch { /* keep the default split */ }
                 }
               }
             }
+            const editorPaneId = editorPane?.dataset.dockkitPane;
+            const hasMainFile = info?.mainFile !== undefined && info?.mainFile !== null;
+            if (!hasMainFile && info?.hasPdf === true) {
+              await attempt(() => sidebar.openResource(fileAddress(sessionId, 'output.pdf'),
+                editorPaneId !== undefined ? { paneId: editorPaneId } : { preferNewPane: true }));
+            }
+            // Re-opening a tab that is already visible makes Harness play its
+            // pane highlight (a box-shadow pulse around the editor edges).
+            const alreadyShowing = (() => {
+              if (!hasMainFile) return false;
+              try {
+                const address = fileAddress(sessionId, info.mainFile);
+                return (sidebar.tabsIn?.(sessionId) ?? []).some((tab) =>
+                  (tab.kind === 'overleaf-source' || tab.kind === 'editor') && tab.contentId === address);
+              } catch { return false; }
+            })();
+            if (hasMainFile && !(preserveDock && alreadyShowing)) {
+              // Name our type explicitly: the default registry ranking also has
+              // to compete with a generic sidebar editor, and an already restored
+              // editor tab must not hide the editable Overleaf tab.
+              const address = fileAddress(sessionId, info.mainFile);
+              const options = { kind: 'overleaf-source' };
+              try {
+                const tabs = sidebar.tabsIn?.(sessionId) ?? [];
+                const mine = tabs.find((tab) => tab.kind === 'overleaf-source' && tab.contentId === address);
+                const editor = tabs.find((tab) => tab.kind === 'editor' && tab.contentId === address);
+                if (editor !== undefined) {
+                  // Keep exactly one editable tab, in the pane where that file
+                  // already lived: drop a duplicate of ours, then take (or
+                  // replace) the generic editor's slot.
+                  if (mine !== undefined) sidebar.closeIn?.(sessionId, mine.id);
+                  options.replaceTab = editor.id;
+                }
+              } catch { /* placement still works without the hint */ }
+              if (options.replaceTab === undefined && editorPaneId !== undefined) options.paneId = editorPaneId;
+              else if (options.replaceTab === undefined && visibleDockPanes().length < 2) options.preferNewPane = true;
+              const opened = await attempt(() => sidebar.openResource(address, options));
+              if (!opened) await attempt(() => sidebar.openResource(address));
+            }
+            if (!preserveDock) await arrangePanes(sessionId, sidebar);
+            await Promise.race([
+              typeof requestAnimationFrame === 'function'
+                ? new Promise((resolve) => requestAnimationFrame(resolve))
+                : wait(16),
+              wait(24),
+            ]);
+            finishEnter();
+            sidebarSection?.refreshLayout();
+            // A restored split can seed its files page a render after the tabs
+            // arrive; clean up non-blockingly so the UI unlocks right away.
+            for (const delay of [250, 750]) {
+              setTimeout(() => {
+                if (sidebar.mounted?.getSnapshot?.() === sessionId) {
+                  pruneEditorPanes(sessionId, sidebar);
+                }
+              }, delay);
+            }
+          } finally {
+            finishEnter();
           }
-          const editorPaneId = editorPane?.dataset.dockkitPane;
-          if (info?.hasPdf === true) {
-            await attempt(() => sidebar.openResource(fileAddress(sessionId, 'output.pdf'),
-              editorPaneId !== undefined ? { paneId: editorPaneId } : { preferNewPane: true }));
-          }
-          if (info?.mainFile !== undefined && info?.mainFile !== null) {
-            // Name our type explicitly: the default registry ranking also has
-            // to compete with a generic sidebar editor, and an already restored
-            // editor tab must not hide the editable Overleaf tab.
-            const address = fileAddress(sessionId, info.mainFile);
-            const options = { kind: 'overleaf-source' };
-            try {
-              const tabs = sidebar.tabsIn?.(sessionId) ?? [];
-              const mine = tabs.find((tab) => tab.kind === 'overleaf-source' && tab.contentId === address);
-              const editor = tabs.find((tab) => tab.kind === 'editor' && tab.contentId === address);
-              if (editor !== undefined) {
-                // Keep exactly one editable tab, in the pane where that file
-                // already lived: drop a duplicate of ours, then take (or
-                // replace) the generic editor's slot.
-                if (mine !== undefined) sidebar.closeIn?.(sessionId, mine.id);
-                options.replaceTab = editor.id;
-              }
-            } catch { /* placement still works without the hint */ }
-            // The PDF split is the normal case; without one, the source splits
-            // the files pane instead. A restored tab in that pane is moved by
-            // `arrangePanes` after it opens.
-            if (options.replaceTab === undefined && editorPaneId !== undefined) options.paneId = editorPaneId;
-            else if (options.replaceTab === undefined && visibleDockPanes().length < 2) options.preferNewPane = true;
-            // Last, so opening the PDF cannot steal focus from the editor.
-            const opened = await attempt(() => sidebar.openResource(address, options));
-            if (!opened) await attempt(() => sidebar.openResource(address));
-          }
-          await arrangePanes(sessionId, sidebar);
-          // A restored split can seed its files page a render after the tabs
-          // arrive; clean up once more after the layout settles.
-          await wait(400);
-          pruneEditorPanes(sessionId, sidebar);
-          await wait(600);
-          pruneEditorPanes(sessionId, sidebar);
-          // Keep the workspace's conversations visible during editing.
-          sidebarSection?.refreshLayout();
         }
 
         /** Open a workspace record from the panel or sidebar section, registering it when needed. */
