@@ -4,7 +4,7 @@
  * @module dsh-overleaf/ui-host
  */
 
-import { readFileSync, readdirSync, statSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, existsSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { CookieExpiredError, OverleafClient, normalizeBaseUrl } from '../lib/api.js';
@@ -155,6 +155,25 @@ export async function registerOverleafUi(ctx, host, runtime) {
       const removedSessionIds = [...new Set([...(project.removedSessionIds ?? []), request.session_id])];
       runtime.projectTable.put({ ...project, removedSessionIds });
       return { localDir, removedSessionIds };
+    }
+
+    /** Remove the local Overleaf cache and its Harness workspace binding. */
+    async clearCache(request) {
+      const localDir = normalizeLocal(request.local_path);
+      const project = runtime.projectTable.get(localDir);
+      if (project === undefined) throw new Error('找不到这个 Overleaf 工作区。');
+      await runtime.live.stop(localDir);
+      const registry = runtime.ctx.get?.('workspaceRegistry');
+      const workspace = registry?.list?.().find((item) => normalizeLocal(item.path) === localDir);
+      let workspaces;
+      try { workspaces = runtime.ctx.get?.('workspaces'); } catch { /* optional host service */ }
+      const workspaceId = workspace?.workspaceId ?? workspace?.id;
+      if (workspaceId !== undefined && typeof workspaces?.delete === 'function') {
+        await workspaces.delete(workspaceId);
+      }
+      runtime.projectTable.remove(localDir);
+      rmSync(localDir, { recursive: true, force: true });
+      return { localDir };
     }
 
     /** Live-sync status for one workspace. */
@@ -330,6 +349,8 @@ export async function registerOverleafUi(ctx, host, runtime) {
         warnings: z.array(z.object({ message: z.string() })) }) },
     forgetSession: { request: z.object({ local_path: z.string().min(1).max(8192), session_id: z.string().min(1).max(256) }).strict(),
       result: z.object({ localDir: z.string(), removedSessionIds: z.array(z.string()) }) },
+    clearCache: { request: z.object({ local_path: z.string().min(1).max(8192) }).strict(),
+      result: z.object({ localDir: z.string() }) },
     overview: { result: z.object({ servers: z.number(),
       workspaces: z.array(z.object({ localDir: z.string(), projectName: z.string(), server: z.string(),
         projectId: z.string(), removedSessionIds: z.array(z.string()), bound: z.boolean(), phase: z.string(), paused: z.boolean(),

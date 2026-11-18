@@ -18,9 +18,10 @@ window.__ModuleLoader__.load({
       .dsh-ol-card{border:1px solid color-mix(in srgb,currentColor 12%,transparent);border-radius:14px;padding:24px;margin-bottom:24px;background:color-mix(in srgb,currentColor 2%,transparent)}
       .dsh-ol-card h2{font-size:15px;font-weight:650;margin:0 0 18px}
       .dsh-ol-field{display:flex;flex-direction:column;gap:8px;font-size:13px;font-weight:550;margin-bottom:14px}
-      .dsh-ol-page input,.dsh-ol-page textarea{width:100%;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:8px;background:Canvas;color:CanvasText;padding:0 12px;font:inherit;outline:none;min-width:0;box-sizing:border-box}
+      .dsh-ol-page input,.dsh-ol-page textarea{width:100%;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:8px;background:color-mix(in srgb,currentColor 2%,transparent);color:var(--dsw-alias-label-primary,inherit);padding:0 12px;font:inherit;outline:none;min-width:0;box-sizing:border-box}
       .dsh-ol-page textarea{height:84px;padding:10px 12px;font-family:ui-monospace,SFMono-Regular,monospace;font-size:12px;resize:vertical}
       .dsh-ol-page input{height:42px}
+      .dsh-ol-page input::placeholder{color:var(--dsw-alias-label-secondary,currentColor);opacity:.72}
       .dsh-ol-page input:focus,.dsh-ol-page textarea:focus{border-color:#5684ec;box-shadow:0 0 0 3px #5684ec22}
       .dsh-ol-page button{font:inherit;cursor:pointer;border-radius:8px;min-height:36px;padding:8px 13px;border:1px solid color-mix(in srgb,currentColor 15%,transparent);color:inherit;background:transparent;white-space:nowrap;font-size:13px}
       .dsh-ol-page button:hover:not(:disabled){background:color-mix(in srgb,currentColor 6%,transparent)}
@@ -31,6 +32,7 @@ window.__ModuleLoader__.load({
       .dsh-ol-error{color:#c34c4c;background:#c34c4c0d;border:1px solid #c34c4c33;border-radius:9px;padding:12px 14px;margin:0 0 16px;font-size:13px;line-height:1.6;overflow-wrap:anywhere}
       .dsh-ol-ok{font-size:13px;padding:12px 14px;background:#2381550d;border:1px solid #23815533;border-radius:9px;margin-bottom:16px}
       .dsh-ol-rows{display:flex;flex-direction:column;gap:10px}
+      .dsh-ol-card>input + .dsh-ol-rows{margin-top:16px}
       .dsh-ol-row{border:1px solid color-mix(in srgb,currentColor 12%,transparent);border-radius:12px;padding:16px 20px}
       .dsh-ol-row-head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
       .dsh-ol-title{font-weight:600;font-size:14px;min-width:0;overflow-wrap:anywhere}
@@ -2003,8 +2005,14 @@ window.__ModuleLoader__.load({
       const [loginError, setLoginError] = useState('');
       const [openError, setOpenError] = useState('');
       const [editing, setEditing] = useState(undefined);
-      const [localPaths, setLocalPaths] = useState({});
       const [live, setLive] = useState({});
+      const [projectPage, setProjectPage] = useState(0);
+      const [workspacePage, setWorkspacePage] = useState(0);
+      const [projectQuery, setProjectQuery] = useState('');
+      const [workspaceQuery, setWorkspaceQuery] = useState('');
+      const [collapsedWorkspaces, setCollapsedWorkspaces] = useState({});
+      const PROJECTS_PER_PAGE = 8;
+      const WORKSPACES_PER_PAGE = 8;
       // Session titles, recency and workspace membership live in client stores;
       // bump the render when either changes so the list never goes stale.
       const [, setSessionTick] = useState(0);
@@ -2014,6 +2022,10 @@ window.__ModuleLoader__.load({
       }, [api]);
 
       useEffect(() => { void refresh(); }, [refresh]);
+      useEffect(() => { setProjectPage(0); }, [data?.projects?.length]);
+      useEffect(() => { setWorkspacePage(0); }, [data?.workspaces?.length]);
+      useEffect(() => { setProjectPage(0); }, [projectQuery]);
+      useEffect(() => { setWorkspacePage(0); }, [workspaceQuery]);
 
       useEffect(() => {
         const sessions = sessionService(ctx);
@@ -2063,9 +2075,7 @@ window.__ModuleLoader__.load({
       const onOpen = (project) => run(`open:${project.id}`, async () => {
         const primary = data?.primary ?? 'https://www.overleaf.com';
         const existing = data.workspaces.find((item) => item.server === primary && item.projectId === project.id);
-        const localPath = existing?.localDir ?? localPaths[project.id]?.trim();
-        const result = await api('open', { base_url: primary, project_id: project.id, project_name: project.name,
-          ...(localPath ? { local_path: localPath } : {}) });
+        const result = await api('open', { base_url: primary, project_id: project.id, project_name: project.name });
         setNotice(`已打开本地工作区 ${project.name}。可在侧边栏选择「连接」启动同步。`);
         if (result.workspaceId !== null && result.workspaceId !== undefined) {
           await enterWorkspace(result.workspaceId, result.localDir);
@@ -2101,6 +2111,12 @@ window.__ModuleLoader__.load({
       });
 
       /** Release the socket and filesystem watcher for one project. */
+      const clearCache = (workspace) => run(`delete:${workspace.localDir}`, async () => {
+        if (!window.confirm(`删除“${workspace.projectName}”的本地工作区？\n\n本地工作区文件和会话绑定会被删除，Overleaf 云端项目不会受影响。`)) return;
+        await api('clearCache', { local_path: workspace.localDir });
+        setNotice(`已删除 ${workspace.projectName} 的本地工作区。它现在可以从下方 Overleaf 项目重新创建。`);
+      });
+
       const stopLive = (workspace) => run(`stop:${workspace.localDir}`, async () => {
         await api('live', { local_path: workspace.localDir, action: 'stop' });
         setNotice(`已结束 ${workspace.projectName} 的实时同步；工作区文件保留在本机。`);
@@ -2121,33 +2137,56 @@ window.__ModuleLoader__.load({
         : data.workspaces.find(entry => entry.localDir === editing)
           ?? { localDir: editing, projectName: editing.split('/').pop(), server: data.primary, bound: true };
 
+      const normalizedProjectQuery = projectQuery.trim().toLocaleLowerCase();
+      const filteredProjects = normalizedProjectQuery === '' ? data.projects : data.projects.filter((project) =>
+        project.name.toLocaleLowerCase().includes(normalizedProjectQuery));
+      const projectCount = filteredProjects.length;
+      const projectPages = Math.max(1, Math.ceil(projectCount / PROJECTS_PER_PAGE));
+      const safeProjectPage = Math.min(projectPage, projectPages - 1);
+      const visibleProjects = filteredProjects.slice(
+        safeProjectPage * PROJECTS_PER_PAGE,
+        (safeProjectPage + 1) * PROJECTS_PER_PAGE,
+      );
       const projectCard = h('div', { className: 'dsh-ol-card' },
-        h('h2', null, '从 Overleaf 项目创建本地工作区'),
-        h('p', { className: 'dsh-ol-muted' }, '首次下载论文到本地目录；打开后按需连接同步。多个对话共用这个目录。'),
+        h('h2', null, 'Overleaf 项目'),
         openError ? h('p', { className: 'dsh-ol-error' }, openError) : null,
-        data.projects.length === 0
-          ? h('div', { className: 'dsh-ol-empty' }, '没有可用项目。先在上方登录，或确认账号下有项目。')
-          : h('div', { className: 'dsh-ol-rows' }, data.projects.map((project) => h('div', {
-            className: 'dsh-ol-row', key: project.id },
-            h('div', { className: 'dsh-ol-row-head' },
-              h('div', null,
-                h('div', { className: 'dsh-ol-title' }, project.name),
-                !data.workspaces.some((item) => item.server === data.primary && item.projectId === project.id)
-                  ? h('input', { placeholder: '本地绝对路径（留空使用默认目录）', value: localPaths[project.id] ?? '',
-                    'aria-label': `${project.name} 的本地工作区目录`, disabled: busy !== '',
-                    onChange: (event) => setLocalPaths((paths) => ({ ...paths, [project.id]: event.target.value })) }) : null,
-                h('div', { className: 'dsh-ol-sub' },
-                  project.lastUpdated ? `最近更新 ${new Date(project.lastUpdated).toLocaleString()}` : project.id)),
-              h('div', { className: 'dsh-ol-actions' },
-                h('button', { className: 'dsh-ol-primary', disabled: busy !== '',
-                  onClick: () => { void onOpen(project); } },
-                busy === `open:${project.id}` ? '打开中…' : data.workspaces.some((item) => item.server === data.primary && item.projectId === project.id) ? '打开本地工作区' : '创建本地工作区')))))));
+        h('input', { placeholder: '搜索 Overleaf 项目', value: projectQuery,
+          onChange: (event) => setProjectQuery(event.target.value), 'aria-label': '搜索 Overleaf 项目' }),
+        filteredProjects.length === 0
+          ? h('div', { className: 'dsh-ol-empty' }, normalizedProjectQuery === '' ? '没有可用项目。先在上方登录，或确认账号下有项目。' : '没有匹配的 Overleaf 项目。')
+          : h('div', { className: 'dsh-ol-rows' }, visibleProjects.map((project) =>
+            h('div', { className: 'dsh-ol-row', key: project.id },
+              h('div', { className: 'dsh-ol-row-head' },
+                h('div', null,
+                  h('div', { className: 'dsh-ol-title' }, project.name)),
+                h('div', { className: 'dsh-ol-actions' },
+                  h('button', { className: 'dsh-ol-primary', disabled: busy !== '',
+                    onClick: () => { void onOpen(project); } },
+                  busy === `open:${project.id}` ? '打开中…'
+                    : data.workspaces.some((item) => item.server === data.primary && item.projectId === project.id)
+                      ? '打开本地工作区' : '创建本地工作区')))))),
+        projectCount > PROJECTS_PER_PAGE ? h('div', { className: 'dsh-ol-actions', style: { justifyContent: 'center', marginTop: 16 } },
+          h('button', { disabled: safeProjectPage === 0, onClick: () => setProjectPage((page) => Math.max(0, page - 1)) }, '上一页'),
+          h('span', { className: 'dsh-ol-muted' }, `${safeProjectPage + 1} / ${projectPages}`),
+          h('button', { disabled: safeProjectPage >= projectPages - 1, onClick: () => setProjectPage((page) => Math.min(projectPages - 1, page + 1)) }, '下一页')) : null);
 
+      const normalizedWorkspaceQuery = workspaceQuery.trim().toLocaleLowerCase();
+      const filteredWorkspaces = normalizedWorkspaceQuery === '' ? data.workspaces : data.workspaces.filter((workspace) =>
+        workspace.projectName.toLocaleLowerCase().includes(normalizedWorkspaceQuery));
+      const workspaceCount = filteredWorkspaces.length;
+      const workspacePages = Math.max(1, Math.ceil(workspaceCount / WORKSPACES_PER_PAGE));
+      const safeWorkspacePage = Math.min(workspacePage, workspacePages - 1);
+      const visibleWorkspaces = filteredWorkspaces.slice(
+        safeWorkspacePage * WORKSPACES_PER_PAGE,
+        (safeWorkspacePage + 1) * WORKSPACES_PER_PAGE,
+      );
       const workspaceCard = h('div', { className: 'dsh-ol-card' },
-        h('h2', null, '本地工作区与对话'),
-        data.workspaces.length === 0
-          ? h('div', { className: 'dsh-ol-empty' }, '还没有本地工作区。先在下方选择已有 Overleaf 项目创建。')
-          : h('div', { className: 'dsh-ol-rows' }, data.workspaces.map((workspace) => {
+        h('h2', null, '本地工作区'),
+        h('input', { placeholder: '搜索本地工作区', value: workspaceQuery,
+          onChange: (event) => setWorkspaceQuery(event.target.value), 'aria-label': '搜索本地工作区' }),
+        filteredWorkspaces.length === 0
+          ? h('div', { className: 'dsh-ol-empty' }, normalizedWorkspaceQuery === '' ? '还没有本地工作区。先在下方选择已有 Overleaf 项目创建。' : '没有匹配的本地工作区。')
+          : h('div', { className: 'dsh-ol-rows' }, visibleWorkspaces.map((workspace) => {
             const status = live[workspace.localDir];
             const phase = status?.phase ?? 'idle';
             const running = phase === 'connected' || phase === 'connecting' || phase === 'reconnecting';
@@ -2155,14 +2194,19 @@ window.__ModuleLoader__.load({
             const sessions = sessionsOfWorkspace(ctx, workspace.localDir);
             const current = ctx.uiWorkspace?.selection?.getSnapshot?.().sessionId;
             const openingLast = busy === `enter:${workspace.localDir}`;
+            const collapsed = collapsedWorkspaces[workspace.localDir] !== false;
             return h('div', { className: 'dsh-ol-row', key: workspace.localDir },
               h('div', { className: 'dsh-ol-row-head' },
-                h('div', null,
+                h('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
+                  h('button', { className: 'dsh-ol-workspace-toggle',
+                    'aria-label': `${collapsed ? '展开' : '收起'} ${workspace.projectName} 的对话`,
+                    'aria-expanded': String(!collapsed),
+                    style: { minHeight: 28, minWidth: 28, padding: '2px 6px', border: 0, fontSize: 16 },
+                    onClick: () => setCollapsedWorkspaces((current) => ({ ...current, [workspace.localDir]: !collapsed })) },
+                  collapsed ? '▸' : '▾'),
                   h('div', { className: 'dsh-ol-title' }, workspace.projectName),
-                  h('div', { className: 'dsh-ol-sub' }, workspace.localDir)),
+                  ),
                 h('div', { className: 'dsh-ol-actions' },
-                  h('span', { className: `dsh-ol-chip ${phase}` }, h('span', { className: 'dot' }),
-                    `${phaseLabel[phase] ?? phase}${phase === 'connected' && collaborators > 0 ? ` · ${collaborators} 人在线` : ''}`),
                   h('button', { className: 'dsh-ol-primary', disabled: busy !== '' || !workspace.bound,
                     onClick: () => { void run(`enter:${workspace.localDir}`, () => openRecord(workspace)); } },
                   openingLast ? '打开中…' : '打开工作区'),
@@ -2174,12 +2218,13 @@ window.__ModuleLoader__.load({
                       busy === `stop:${workspace.localDir}` ? '结束中…' : '断开连接')
                     : h('button', { disabled: busy !== '' || !workspace.bound,
                       onClick: () => { void startLive(workspace); } },
-                    busy === `start:${workspace.localDir}` ? '启动中…' : '连接并同步'),
-                  h('button', { disabled: busy !== '' || !workspace.bound,
-                    onClick: () => setEditing(workspace.localDir) }, '编辑'))),
-              h('div', { className: 'dsh-ol-sessions' },
+                    busy === `start:${workspace.localDir}` ? '启动中…' : '连接'),
+                  h('button', { className: 'dsh-ol-danger', disabled: busy !== '' || !workspace.bound,
+                    onClick: () => { void clearCache(workspace); } },
+                  busy === `delete:${workspace.localDir}` ? '删除中…' : '删除'))),
+              !collapsed ? h('div', { className: 'dsh-ol-sessions' },
                 sessions.length === 0
-                  ? h('div', { className: 'dsh-ol-session-empty' }, '还没有会话。点击「新建会话」开始。')
+                  ? null
                   : sessions.map((session) => h('button', {
                     key: session.id,
                     className: `dsh-ol-session${session.id === current ? ' current' : ''}`,
@@ -2187,24 +2232,32 @@ window.__ModuleLoader__.load({
                     disabled: busy !== '' || !workspace.bound,
                     onClick: () => { void openSession(workspace, session); },
                   }, h('span', { className: 'dsh-ol-session-title' }, sessionLabel(session)),
-                  h('span', { className: 'dsh-ol-session-time' }, sessionTime(session.updatedAt))))));
-          })));
+                  h('span', { className: 'dsh-ol-session-time' }, sessionTime(session.updatedAt))))) : null);
+          })),
+        workspaceCount > WORKSPACES_PER_PAGE ? h('div', { className: 'dsh-ol-actions', style: { justifyContent: 'center', marginTop: 16 } },
+          h('button', { disabled: safeWorkspacePage === 0, onClick: () => setWorkspacePage((page) => Math.max(0, page - 1)) }, '上一页'),
+          h('span', { className: 'dsh-ol-muted' }, `${safeWorkspacePage + 1} / ${workspacePages}`),
+          h('button', { disabled: safeWorkspacePage >= workspacePages - 1, onClick: () => setWorkspacePage((page) => Math.min(workspacePages - 1, page + 1)) }, '下一页')) : null);
 
       return h('div', { className: 'dsh-ol-page' }, h('style', null, CSS),
         h('div', { className: 'dsh-ol-inner' },
           h('div', { className: 'dsh-ol-header' },
-            h('div', null, h('h1', null, 'Overleaf'), h('p', { className: 'dsh-ol-muted' },
-              '选择已有论文创建本地工作区，按需连接 Overleaf；在同一个工作区中用多个独立对话持续处理同一篇论文。')))),
+            h('div', null, h('h1', null, 'Overleaf Workshop')))),
         h('div', { className: 'dsh-ol-inner' },
           error ? h('p', { className: 'dsh-ol-error' }, error) : null,
           setupError !== '' ? h('p', { className: 'dsh-ol-error' }, setupError) : null,
+          h('div', { className: 'dsh-ol-card' },
+            h('h2', null, '已登录信息'),
+            data.servers.length === 0
+              ? h(ServerCard, { server: undefined, primary: data.primary, onLogin, onLogout,
+                busy: busy.startsWith('login') || busy.startsWith('logout'), notice, error: loginError })
+              : data.servers.map((server) => h(ServerCard, { key: server.origin, server, primary: data.primary, onLogin, onLogout,
+                busy: busy.startsWith('login') || busy.startsWith('logout'), notice, error: loginError }))),
           workspaceCard,
           editingWorkspace !== undefined ? h(WorkspaceEditor, {
             key: editingWorkspace.localDir, workspace: editingWorkspace, api,
             openPdf: () => { void openPdf(editingWorkspace); },
             onClose: () => setEditing(undefined) }) : null,
-          h(ServerCard, { server: primary, primary: data.primary, onLogin, onLogout,
-            busy: busy.startsWith('login') || busy.startsWith('logout'), notice, error: loginError }),
           projectCard));
     }
 
@@ -2665,7 +2718,7 @@ window.__ModuleLoader__.load({
           const running = ['connected', 'connecting', 'reconnecting'].includes(workspace.phase);
           const children = [
             { id: 'status', label: subtitle(workspace), disabled: true },
-            { id: 'connect', label: running ? '断开连接' : '连接并同步', icon: { key: 'overleaf.link' }, run: () => toggleSync(workspace) },
+            { id: 'connect', label: running ? '断开连接' : '连接', icon: { key: 'overleaf.link' }, run: () => toggleSync(workspace) },
             { id: 'new', label: '新建会话', icon: { key: 'overleaf.new' }, run: () => startNewSession(workspace) },
           ];
           if (workspace.phase === 'connected') {
@@ -2757,6 +2810,11 @@ window.__ModuleLoader__.load({
       /** Whether the conversation on screen belongs to an Overleaf workspace. */
       const isOverleafActive = () => {
         if (entering) return true;
+        // A main panel (Plugins, Plugin Market, Overleaf settings, etc.) owns
+        // the center surface. The selected conversation can remain an Overleaf
+        // session while that panel is open, so the session alone is not enough
+        // to keep the flipped three-column editor layout active.
+        if (ctx.layout?.panelInfo?.getSnapshot?.().activePanelId !== null) return false;
         const sessionId = ctx.uiWorkspace?.selection?.getSnapshot?.().sessionId;
         if (sessionId === undefined) return false;
         const knownDir = sessionDirs()[sessionId];
@@ -2957,7 +3015,7 @@ window.__ModuleLoader__.load({
           const more = iconButton('ellipsis-outline-regular', `更多操作：${workspace.projectName}`, (event) => openMenu(workspace, event.currentTarget));
           more.setAttribute('data-context-menu-trigger', '');
           more.setAttribute('aria-haspopup', 'menu'); more.setAttribute('aria-expanded', 'false');
-          const connect = iconButton('link-outline-regular', `${running ? '断开连接' : '连接并同步'}：${workspace.projectName}`, () => { void toggleSync(workspace); });
+          const connect = iconButton('link-outline-regular', `${running ? '断开连接' : '连接'}：${workspace.projectName}`, () => { void toggleSync(workspace); });
           if (running) connect.classList.add('connected');
           const create = iconButton('new-chat-outline-regular', `新建会话：${workspace.projectName}`, () => { void startNewSession(workspace); });
           for (const button of [more, connect, create]) { button.disabled = busy !== '' || (button !== more && !workspace.bound); actions.append(button); }
@@ -3073,6 +3131,12 @@ window.__ModuleLoader__.load({
         }
         if (!['session', 'workspace'].includes(active?.kind)) schedule();
       });
+      let unsubscribePanel;
+      try {
+        unsubscribePanel = ctx.layout?.panelInfo?.subscribe?.(() => syncMode());
+      } catch (error) {
+        console.warn('[dsh-overleaf] panel selection subscription failed:', error);
+      }
       let unsubscribeSelection;
       try {
         unsubscribeSelection = ctx.uiWorkspace.selection?.subscribe?.(() => {
@@ -3138,6 +3202,7 @@ window.__ModuleLoader__.load({
           unsubscribeSessionMenu?.();
           document.documentElement.classList.remove('dsh-overleaf-flat-workspace-menu');
           unsubscribeSelection?.();
+          unsubscribePanel?.();
           clearInterval(timer);
           clearInterval(tidyTimer);
           clearInterval(fileTreeTimer);
