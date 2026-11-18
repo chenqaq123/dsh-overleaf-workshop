@@ -106,7 +106,10 @@ const editorTheme = EditorView.theme({
   '.cm-lineNumbers .cm-gutterElement': { padding: '0 8px 0 4px' },
   '.cm-activeLine': { backgroundColor: 'color-mix(in srgb, currentColor 5%, transparent)' },
   '.cm-activeLineGutter': { backgroundColor: 'color-mix(in srgb, currentColor 5%, transparent)' },
-  '.cm-selectionBackground, ::selection': { backgroundColor: 'color-mix(in srgb, var(--dsw-alias-link, #89B4FA) 24%, transparent)' },
+  '.cm-selectionBackground': { backgroundColor: 'color-mix(in srgb, var(--dsw-alias-link, #89B4FA) 24%, transparent)' },
+  '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground': {
+    backgroundColor: 'color-mix(in srgb, var(--dsw-alias-link, #89B4FA) 34%, transparent)',
+  },
   '.cm-matchingBracket': { color: 'var(--dsw-alias-link, #89B4FA) !important', borderBottom: '1px solid var(--dsw-alias-link, #89B4FA)' },
   '.cm-tooltip-autocomplete': { zIndex: '30', backgroundColor: 'Canvas', color: 'CanvasText' },
   '.cm-foldGutter': { width: '14px' },

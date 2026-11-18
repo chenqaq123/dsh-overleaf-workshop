@@ -109,6 +109,13 @@ window.__ModuleLoader__.load({
       .dsh-ol-cm .cm-lineNumbers .cm-gutterElement{color:color-mix(in srgb,currentColor 38%,transparent);padding:0 8px 0 4px}
       .dsh-ol-cm .cm-foldGutter{width:14px;color:var(--dsw-alias-link,#89B4FA)}
       .dsh-ol-cm .cm-tooltip-autocomplete{z-index:30;background:Canvas;color:CanvasText;border:1px solid color-mix(in srgb,currentColor 16%,transparent);box-shadow:0 8px 24px #0003}
+      /* CodeMirror's focused selection rule is more specific than its base
+         .cm-selectionBackground rule. Override every selection layer so the
+         dark palette never falls back to CodeMirror's light lavender default. */
+      .dsh-ol-cm .cm-editor .cm-selectionBackground{background-color:color-mix(in srgb,var(--dsw-alias-link,#89B4FA) 24%,transparent)!important}
+      .dsh-ol-cm .cm-editor.cm-focused>.cm-scroller>.cm-selectionLayer .cm-selectionBackground{background-color:color-mix(in srgb,var(--dsw-alias-link,#89B4FA) 34%,transparent)!important}
+      body[data-ds-dark-theme] .dsh-ol-cm .cm-editor .cm-selectionBackground{background-color:color-mix(in srgb,var(--dsw-alias-link,#89B4FA) 20%,transparent)!important;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--dsw-alias-link,#89B4FA) 30%,transparent)}
+      body[data-ds-dark-theme] .dsh-ol-cm .cm-editor.cm-focused>.cm-scroller>.cm-selectionLayer .cm-selectionBackground{background-color:color-mix(in srgb,var(--dsw-alias-link,#89B4FA) 28%,transparent)!important;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--dsw-alias-link,#89B4FA) 42%,transparent)}
       /* Token colors follow the Harness palette; comments stay a muted gray. */
       .dsh-ol-cm .cm-ol-keyword{color:var(--dsw-alias-state-idle-primary,#CBA6F7)}
       .dsh-ol-cm .cm-ol-tag,.dsh-ol-cm .cm-ol-builtin{color:var(--dsw-alias-link,#89B4FA)}
