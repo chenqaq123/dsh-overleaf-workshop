@@ -100,10 +100,10 @@ const editorTheme = EditorView.theme({
     fontSize: 'var(--dsh-content-font-size, var(--dsh-code-font-size, 12px))',
   },
   '.cm-scroller': { overflow: 'auto', fontFamily: 'inherit', lineHeight: 'calc(22px + var(--dsh-content-font-delta, 0px))' },
-  '.cm-content': { minHeight: '100%', padding: '6px 12px 14px', caretColor: 'currentColor' },
-  '.cm-line': { fontFamily: 'inherit', fontSize: 'inherit' },
+  '.cm-content': { minHeight: '100%', padding: '6px 4px 14px', caretColor: 'currentColor' },
+  '.cm-line': { fontFamily: 'inherit', fontSize: 'inherit', padding: '0 2px 0 2px' },
   '.cm-gutters': { backgroundColor: 'transparent', color: 'color-mix(in srgb, currentColor 38%, transparent)', border: '0' },
-  '.cm-lineNumbers .cm-gutterElement': { padding: '0 8px 0 4px' },
+  '.cm-lineNumbers .cm-gutterElement': { padding: '0 4px 0 2px' },
   '.cm-activeLine': { backgroundColor: 'color-mix(in srgb, currentColor 5%, transparent)' },
   '.cm-activeLineGutter': { backgroundColor: 'color-mix(in srgb, currentColor 5%, transparent)' },
   '.cm-selectionBackground': { backgroundColor: 'color-mix(in srgb, var(--dsw-alias-link, #89B4FA) 24%, transparent)' },
@@ -112,7 +112,7 @@ const editorTheme = EditorView.theme({
   },
   '.cm-matchingBracket': { color: 'var(--dsw-alias-link, #89B4FA) !important', borderBottom: '1px solid var(--dsw-alias-link, #89B4FA)' },
   '.cm-tooltip-autocomplete': { zIndex: '30', backgroundColor: 'Canvas', color: 'CanvasText' },
-  '.cm-foldGutter': { width: '14px' },
+  '.cm-foldGutter': { width: '8px' },
 }, { dark: false });
 
 function completionAdapter(provider, view) {

@@ -5,6 +5,8 @@ window.__ModuleLoader__.load({
     const React = require('react');
     const h = React.createElement;
     const { useState, useEffect, useCallback, useRef, useLayoutEffect, useImperativeHandle, useSyncExternalStore, forwardRef } = React;
+    const nativePrimitives = require('@deepseek-ai/dsh-client-ui-primitives');
+    const NativeSuccessIcon = nativePrimitives.IconCheckCircleOutlineRegular;
     const PANEL = 'overleaf';
     const POLL_MS = 1500;
     const removedWorkspaceSessions = new Map();
@@ -104,10 +106,11 @@ window.__ModuleLoader__.load({
       .dsh-ol-cm .cm-editor{height:100%;background:transparent;color:var(--dsw-alias-label-primary,CanvasText);font-family:var(--ds-font-family-code,ui-monospace,SFMono-Regular,monospace);font-size:var(--dsh-content-font-size,var(--dsh-code-font-size,12px));overscroll-behavior:contain}
       .dsh-ol-cm .cm-editor.cm-focused{outline:none}
       .dsh-ol-cm .cm-scroller{font-family:inherit;line-height:calc(22px + var(--dsh-content-font-delta,0px));overflow:auto}
-      .dsh-ol-cm .cm-content{font-family:inherit;tab-size:2}
+      .dsh-ol-cm .cm-content{font-family:inherit;tab-size:2;padding:6px 4px 14px}
+      .dsh-ol-cm .cm-line{padding:0 2px 0 2px}
       .dsh-ol-cm .cm-gutters{background:transparent;border-right:1px solid color-mix(in srgb,currentColor 9%,transparent)}
-      .dsh-ol-cm .cm-lineNumbers .cm-gutterElement{color:color-mix(in srgb,currentColor 38%,transparent);padding:0 8px 0 4px}
-      .dsh-ol-cm .cm-foldGutter{width:14px;color:var(--dsw-alias-link,#89B4FA)}
+      .dsh-ol-cm .cm-lineNumbers .cm-gutterElement{color:color-mix(in srgb,currentColor 38%,transparent);padding:0 4px 0 2px}
+      .dsh-ol-cm .cm-foldGutter{width:8px;color:var(--dsw-alias-link,#89B4FA)}
       .dsh-ol-cm .cm-tooltip-autocomplete{z-index:30;background:Canvas;color:CanvasText;border:1px solid color-mix(in srgb,currentColor 16%,transparent);box-shadow:0 8px 24px #0003}
       /* CodeMirror's focused selection rule is more specific than its base
          .cm-selectionBackground rule. Override every selection layer so the
@@ -193,6 +196,8 @@ window.__ModuleLoader__.load({
       .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-selected=true]>button{background:color-mix(in srgb,var(--dsw-alias-state-idle-primary,#CBA6F7) 13%,transparent);color:var(--dsw-alias-label-primary,CanvasText)}
       .dsh-ol-flipped [data-files-root] li[data-files-entry][data-dsh-selected=true]>button>[data-dsh-file-icon]{filter:saturate(1.08)}
       @media (prefers-reduced-motion:reduce){.dsh-ol-flipped [data-files-root] li[data-files-entry]>button{transition:none}}
+      [data-dockkit-tab][data-dsh-overleaf-files-locked] [data-dockkit-tab-close]{display:none!important;pointer-events:none!important}
+      [data-dockkit-tab][data-dsh-overleaf-files-locked] [data-dockkit-tab-title]{mask-image:none!important}
       .dsh-ol-tree-menu{position:fixed;z-index:1000;min-width:168px;padding:5px;border:1px solid var(--dsw-alias-border-l3,color-mix(in srgb,currentColor 16%,transparent));border-radius:9px;background:var(--dsw-alias-bg-elevated,Canvas);color:var(--dsw-alias-label-primary,CanvasText);box-shadow:0 12px 30px #0005;font-size:12px}
       .dsh-ol-tree-menu button{display:flex;align-items:center;gap:8px;width:100%;min-height:30px;padding:5px 8px;border:0;border-radius:6px;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
       .dsh-ol-tree-menu button:hover,.dsh-ol-tree-menu button:focus-visible{background:var(--dsw-alias-interactive-bg-hover,color-mix(in srgb,currentColor 8%,transparent));outline:none}
@@ -420,7 +425,12 @@ window.__ModuleLoader__.load({
       .dsh-ol-source-workspace[data-pdf-open=true] .dsh-ol-source-editor{flex-basis:55%}
       .dsh-ol-source-workspace.narrow{flex-direction:column}
       .dsh-ol-source-workspace.narrow .dsh-ol-inline-pdf{width:100%;height:45%;flex:none;border-left:0;border-top:1px solid var(--dsw-alias-border-l3,#45475a)}
-      .dsh-ol-src-bar{display:flex;align-items:center;flex-wrap:wrap;row-gap:4px;gap:6px;padding:8px 10px 6px;flex:none;min-width:0}
+      .dsh-ol-src-bar{position:relative;display:flex;align-items:center;flex-wrap:wrap;row-gap:4px;gap:6px;padding:8px 10px 6px;flex:none;min-width:0}
+      .dsh-ol-toast{position:absolute;top:calc(100% + 3px);right:10px;z-index:8;display:inline-flex;align-items:center;gap:6px;min-height:28px;max-width:calc(100% - 20px);box-sizing:border-box;padding:4px 10px 4px 8px;border:1px solid color-mix(in srgb,var(--dsw-alias-state-success-primary,#2fbf71) 32%,var(--dsw-alias-border-l3,currentColor));border-radius:999px;background:color-mix(in srgb,var(--dsw-alias-state-success-primary,#2fbf71) 7%,var(--dsw-alias-bg-elevated,Canvas));color:var(--dsw-alias-label-primary,CanvasText);box-shadow:0 7px 20px color-mix(in srgb,currentColor 14%,transparent);font-size:11.5px;font-weight:500;line-height:18px;white-space:nowrap;pointer-events:none;transform-origin:top right;animation:dsh-ol-toast-life 5s ease both}
+      .dsh-ol-toast-icon{width:14px;height:14px;flex:none;color:var(--dsw-alias-state-success-primary,#2fbf71)}
+      .dsh-ol-toast-text{min-width:0;overflow:hidden;text-overflow:ellipsis}
+      @keyframes dsh-ol-toast-life{0%{opacity:0;transform:translateY(-4px) scale(.98)}10%,82%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-2px) scale(.99)}}
+      @media (prefers-reduced-motion:reduce){.dsh-ol-toast{animation:none}}
       .dsh-ol-src-name{font-family:ui-monospace,SFMono-Regular,monospace;font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
       .dsh-ol-src .dsh-ol-dirty{color:#e0a100;font-size:10px;line-height:1}
       .dsh-ol-src-bar .dsh-ol-src-spacer{flex:1}
@@ -1260,6 +1270,8 @@ window.__ModuleLoader__.load({
       const [busy, setBusy] = useState('');
       const [error, setError] = useState('');
       const [notice, setNotice] = useState('');
+      const [toast, setToast] = useState(undefined);
+      const toastSequence = useRef(0);
       const [compile, setCompile] = useState(undefined);
       const [hasPdf, setHasPdf] = useState(() => readPrepared(localPath)?.hasPdf === true);
       const pdfVisibility = pdfVisibilityStore(workspaceKey);
@@ -1294,6 +1306,16 @@ window.__ModuleLoader__.load({
       const live = useRef({ text: '', baseText: '', mtimeMs: 0, dirty: false });
       /** Defer remote merges for a moment after a keystroke, so typing is not disturbed. */
       const lastEditAt = useRef(0);
+
+      // Success is a transient status; it should never take space away from the
+      // editor or remain visible after the user has moved on.
+      useEffect(() => {
+        if (toast === undefined) return undefined;
+        const timer = setTimeout(() => {
+          setToast((current) => (current?.key === toast.key ? undefined : current));
+        }, 5000);
+        return () => clearTimeout(timer);
+      }, [toast]);
 
       const adopt = useCallback((result) => {
         live.current = { text: result.text, baseText: result.text, mtimeMs: result.mtimeMs, dirty: false };
@@ -1547,6 +1569,7 @@ window.__ModuleLoader__.load({
         setBusy('compile');
         setCompile(undefined);
         setNotice('');
+        setToast(undefined);
         try {
           // Make sure a just-saved edit reached Overleaf before the server
           // compiles; otherwise the compile result is one revision behind.
@@ -1555,7 +1578,10 @@ window.__ModuleLoader__.load({
           const result = await api('compile', { ...where(), main_file: path });
           setCompile(result);
           if (result.status === 'success') {
-            setNotice('编译成功，PDF 已更新。点「PDF」查看。');
+            setToast({
+              key: ++toastSequence.current,
+              text: '编译成功，PDF 已更新。',
+            });
             if (typeof localPath === 'string') {
               rememberPrepared(localPath, { ...readPrepared(localPath), localDir: localPath, bound: true, hasPdf: true });
             }
@@ -1629,7 +1655,26 @@ window.__ModuleLoader__.load({
             ? '重新建立与 Overleaf 的实时连接'
             : '推送当前改动后关闭实时连接，停止监听文件；文件保留在本机',
           onClick: () => { void toggleSync(); } },
-          busy === 'live' ? '处理中…' : syncEnded ? '恢复同步' : '结束')),
+          busy === 'live' ? '处理中…' : syncEnded ? '恢复同步' : '结束'),
+          toast !== undefined && error === '' ? h('div', {
+            key: toast.key,
+            className: 'dsh-ol-toast',
+            role: 'status',
+            'aria-live': 'polite',
+          },
+          typeof NativeSuccessIcon === 'function'
+            ? h(NativeSuccessIcon, { size: 14, className: 'dsh-ol-toast-icon' })
+            : h('svg', {
+              className: 'dsh-ol-toast-icon',
+              width: 14,
+              height: 14,
+              viewBox: '0 0 16 16',
+              fill: 'none',
+              stroke: 'currentColor',
+              strokeWidth: 1.5,
+              'aria-hidden': 'true',
+            }, h('circle', { cx: 8, cy: 8, r: 6.25 }), h('path', { d: 'm5 8 2 2 4-4.25' })),
+          h('span', { className: 'dsh-ol-toast-text' }, toast.text)) : null),
         h('div', { className: 'dsh-ol-src-path' }, `${path} · ${statusLine}`),
         error !== '' ? h('div', { className: 'dsh-ol-src-note error' }, error) : null,
         notice !== '' && error === '' ? h('div', { className: 'dsh-ol-src-note ok' }, notice) : null,
@@ -1658,6 +1703,7 @@ window.__ModuleLoader__.load({
             setFile((previous) => (previous === undefined ? previous : { ...previous, text }));
             setDirty(true);
             setNotice('');
+            setToast(undefined);
             setPushWatch(undefined);
           },
         })),
@@ -3639,6 +3685,58 @@ window.__ModuleLoader__.load({
             }, 60);
           };
 
+          const patchedActions = new WeakMap();
+          let lockFrame;
+          let lockedMenuTab;
+
+          const lockedFiles = (sessionId) => {
+            if (!isKnownSession(sessionId)) return undefined;
+            const tabs = sidebarService()?.tabsIn?.(sessionId) ?? [];
+            const filesTab = tabs.find((tab) => tab.kind === 'files');
+            if (filesTab === undefined) return undefined;
+            const filesPane = paneOfTab(filesTab.id);
+            const leftPane = visibleDockPanes()[0];
+            return filesPane !== undefined && filesPane === leftPane
+              ? { filesTab, filesPane } : undefined;
+          };
+
+          const isLockedFilesTab = (sessionId, tabId) =>
+            lockedFiles(sessionId)?.filesTab.id === tabId;
+
+          const patchCloseAction = (sessionId) => {
+            const actions = findPaneActions(sessionId);
+            if (actions === undefined || typeof actions.closeTab !== 'function'
+              || patchedActions.has(actions)) return;
+            const original = actions.closeTab;
+            const wrapped = (targetSession, tabId) => {
+              if (isLockedFilesTab(targetSession, tabId)) return;
+              return original.call(actions, targetSession, tabId);
+            };
+            try {
+              actions.closeTab = wrapped;
+              patchedActions.set(actions, { original, wrapped });
+            } catch { /* DOM capture guards remain active. */ }
+          };
+
+          const syncFilesTabLock = () => {
+            lockFrame = undefined;
+            const sessionId = sidebarService()?.mounted?.getSnapshot?.();
+            const locked = lockedFiles(sessionId);
+            const expected = locked === undefined ? undefined
+              : [...locked.filesPane.querySelectorAll('[data-dockkit-tab]')]
+                .find((tab) => tab.getAttribute('data-dockkit-tab') === locked.filesTab.id);
+            for (const tab of document.querySelectorAll('[data-dsh-overleaf-files-locked]')) {
+              if (tab !== expected) tab.removeAttribute('data-dsh-overleaf-files-locked');
+            }
+            if (expected === undefined) return;
+            expected.setAttribute('data-dsh-overleaf-files-locked', '');
+            patchCloseAction(sessionId);
+          };
+
+          const scheduleFilesTabLock = () => {
+            if (lockFrame === undefined) lockFrame = setTimeout(syncFilesTabLock, 0);
+          };
+
           let contextMenu;
           let contextTarget;
 
@@ -3690,6 +3788,9 @@ window.__ModuleLoader__.load({
 
           const onContextMenu = (event) => {
             const target = event.target instanceof Element ? event.target : undefined;
+            const contextTab = target?.closest('[data-dockkit-tab]');
+            lockedMenuTab = contextTab?.hasAttribute('data-dsh-overleaf-files-locked') === true
+              ? contextTab : undefined;
             const rootElement = target?.closest('[data-files-root]');
             if (rootElement === null || rootElement === undefined) return;
             const pane = rootElement.closest('[data-dockkit-pane]');
@@ -3714,12 +3815,40 @@ window.__ModuleLoader__.load({
               closeContextMenu();
             }
           };
-          const onKeyDown = (event) => { if (event.key === 'Escape') closeContextMenu(); };
+          const onKeyDown = (event) => {
+            if (event.key === 'Escape') closeContextMenu();
+            const closeShortcut = (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey
+              && String(event.key).toLowerCase() === 'w';
+            if (!closeShortcut) return;
+            const lockedPane = document.querySelector('[data-dsh-overleaf-files-locked]')
+              ?.closest('[data-dockkit-pane]');
+            if (lockedPane === null || lockedPane === undefined) return;
+            const focusedPane = document.activeElement instanceof Element
+              ? document.activeElement.closest('[data-dockkit-pane]') : undefined;
+            if ((focusedPane !== undefined && focusedPane !== lockedPane)
+              || (focusedPane === undefined && !lockedPane.hasAttribute('data-dockkit-pane-active'))) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          };
           const onScroll = () => closeContextMenu();
 
           const onClick = (event) => {
             if (event.button !== undefined && event.button !== 0) return;
             const target = event.target instanceof Element ? event.target : undefined;
+            const closeButton = target?.closest('[data-dockkit-tab-close]');
+            if (closeButton?.closest('[data-dsh-overleaf-files-locked]') !== null
+              && closeButton?.closest('[data-dsh-overleaf-files-locked]') !== undefined) {
+              event.preventDefault();
+              event.stopImmediatePropagation();
+              return;
+            }
+            if (target?.closest('[data-dockkit-menu-close]') !== null
+              && target?.closest('[data-dockkit-menu-close]') !== undefined
+              && lockedMenuTab?.isConnected === true) {
+              event.preventDefault();
+              event.stopImmediatePropagation();
+              return;
+            }
             // The row's @文件 chip has its own mention handler; leave it alone.
             if (target?.closest?.('button[class*="explorerRef"]')) return;
             const row = nativeFileRow(target);
@@ -3789,13 +3918,33 @@ window.__ModuleLoader__.load({
             event.stopPropagation();
             if (createdSplit) scheduleSplitRatio(sessionId);
           };
+          const onAuxClick = (event) => {
+            if (event.button !== 1) return;
+            const target = event.target instanceof Element ? event.target : undefined;
+            if (target?.closest('[data-dsh-overleaf-files-locked]') === null
+              || target?.closest('[data-dsh-overleaf-files-locked]') === undefined) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          };
+          const observer = new MutationObserver(scheduleFilesTabLock);
+          observer.observe(document.body, { childList: true, subtree: true });
+          const unsubscribeMounted = sidebarService()?.mounted?.subscribe?.(scheduleFilesTabLock);
+          scheduleFilesTabLock();
           window.addEventListener('click', onClick, true);
+          window.addEventListener('auxclick', onAuxClick, true);
           document.addEventListener('contextmenu', onContextMenu, true);
           document.addEventListener('click', onDocumentClick, true);
           document.addEventListener('keydown', onKeyDown, true);
           document.addEventListener('scroll', onScroll, true);
           return () => {
+            observer.disconnect();
+            unsubscribeMounted?.();
+            if (lockFrame !== undefined) clearTimeout(lockFrame);
+            for (const tab of document.querySelectorAll('[data-dsh-overleaf-files-locked]')) {
+              tab.removeAttribute('data-dsh-overleaf-files-locked');
+            }
             window.removeEventListener('click', onClick, true);
+            window.removeEventListener('auxclick', onAuxClick, true);
             document.removeEventListener('contextmenu', onContextMenu, true);
             document.removeEventListener('click', onDocumentClick, true);
             document.removeEventListener('keydown', onKeyDown, true);

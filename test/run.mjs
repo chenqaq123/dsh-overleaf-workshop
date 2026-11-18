@@ -742,6 +742,11 @@ await test('the vendored editor chunk has the module-loader contract', () => {
     'the Overleaf file tree uses semantic file icons');
   assert.ok(client.includes('decorateFileTreeRows()') && client.includes('childList: true'),
     'file-tree icons refresh after native tree updates');
+  assert.ok(client.includes('data-dsh-overleaf-files-locked')
+    && client.includes('[data-dockkit-tab-close]')
+    && client.includes('[data-dockkit-menu-close]')
+    && client.includes('patchCloseAction'),
+    'the Overleaf Files tab is locked against every manual close route');
   assert.ok(client.includes("addEventListener('contextmenu', onContextMenu, true)")
     && client.includes('creationDirectory(root, row)')
     && client.includes('dsh-overleaf-create')
