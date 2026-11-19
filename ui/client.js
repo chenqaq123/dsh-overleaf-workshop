@@ -7,6 +7,7 @@ window.__ModuleLoader__.load({
     const { useState, useEffect, useCallback, useRef, useLayoutEffect, useImperativeHandle, useSyncExternalStore, forwardRef } = React;
     const nativePrimitives = require('@deepseek-ai/dsh-client-ui-primitives');
     const NativeSuccessIcon = nativePrimitives.IconCheckCircleOutlineRegular;
+    const NativeWorkspaceIcon = nativePrimitives.IconListPenOutlineRegular;
     const PANEL = 'overleaf';
     const POLL_MS = 1500;
     const removedWorkspaceSessions = new Map();
@@ -350,8 +351,6 @@ window.__ModuleLoader__.load({
       .dsh-ol-sb-leading[aria-expanded=true] .dsh-ol-sb-arrow{transform:rotate(90deg)}
       .dsh-ol-sb-row:hover .dsh-ol-sb-folder,.dsh-ol-sb-row:focus-within .dsh-ol-sb-folder{display:none}
       .dsh-ol-sb-row:hover .dsh-ol-sb-arrow,.dsh-ol-sb-row:focus-within .dsh-ol-sb-arrow{display:block}
-      .dsh-ol-sb-status{position:absolute;right:-2px;bottom:3px;width:5px;height:5px;border-radius:50%;background:#8a8f98;box-shadow:0 0 0 2px var(--dsw-alias-background-primary,#1e1e2e)}
-      .dsh-ol-sb-status.connected{background:#86efac}.dsh-ol-sb-status.connecting,.dsh-ol-sb-status.reconnecting{background:#e2b93b}.dsh-ol-sb-status.error{background:#e56767}
       .dsh-ol-sb-title{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
       .dsh-ol-sb-row>.dsh-ol-sb-title{flex:1}
       .dsh-ol-sb-row:hover>.dsh-ol-sb-title,.dsh-ol-sb-row:focus-within>.dsh-ol-sb-title,.dsh-ol-sb-row.menu-open>.dsh-ol-sb-title{padding-right:78px}
@@ -399,8 +398,6 @@ window.__ModuleLoader__.load({
       @media(hover:none){.dsh-ol-sb-actions{opacity:1;pointer-events:auto}.dsh-ol-sb-row>.dsh-ol-sb-title{padding-right:78px}}
     `;
 
-    const phaseLabel = { idle: '未启动', connecting: '连接中', connected: '实时同步中',
-      reconnecting: '重连中', stopped: '已停止', error: '出错' };
     const errorText = (error) => String(error?.message ?? error);
 
     /**
@@ -426,7 +423,8 @@ window.__ModuleLoader__.load({
       .dsh-ol-source-workspace.narrow{flex-direction:column}
       .dsh-ol-source-workspace.narrow .dsh-ol-inline-pdf{width:100%;height:45%;flex:none;border-left:0;border-top:1px solid var(--dsw-alias-border-l3,#45475a)}
       .dsh-ol-src-bar{position:relative;display:flex;align-items:center;flex-wrap:wrap;row-gap:4px;gap:6px;padding:8px 10px 6px;flex:none;min-width:0}
-      .dsh-ol-toast{position:absolute;top:calc(100% + 3px);right:10px;z-index:8;display:inline-flex;align-items:center;gap:6px;min-height:28px;max-width:calc(100% - 20px);box-sizing:border-box;padding:4px 10px 4px 8px;border:1px solid color-mix(in srgb,var(--dsw-alias-state-success-primary,#2fbf71) 32%,var(--dsw-alias-border-l3,currentColor));border-radius:999px;background:color-mix(in srgb,var(--dsw-alias-state-success-primary,#2fbf71) 7%,var(--dsw-alias-bg-elevated,Canvas));color:var(--dsw-alias-label-primary,CanvasText);box-shadow:0 7px 20px color-mix(in srgb,currentColor 14%,transparent);font-size:11.5px;font-weight:500;line-height:18px;white-space:nowrap;pointer-events:none;transform-origin:top right;animation:dsh-ol-toast-life 5s ease both}
+      .dsh-ol-toast{position:absolute;top:calc(100% + 3px);right:10px;z-index:8;display:inline-flex;align-items:center;gap:6px;min-height:28px;max-width:calc(100% - 20px);box-sizing:border-box;padding:4px 10px 4px 8px;border:1px solid var(--dsw-alias-border-l3,currentColor);border-radius:999px;background:var(--dsw-alias-bg-elevated,Canvas);color:var(--dsw-alias-label-primary,CanvasText);box-shadow:0 7px 20px color-mix(in srgb,currentColor 14%,transparent);font-size:11.5px;font-weight:500;line-height:18px;white-space:nowrap;pointer-events:none;transform-origin:top right;animation:dsh-ol-toast-life 5s ease both}
+      .dsh-ol-toast[data-tone=success]{border-color:color-mix(in srgb,var(--dsw-alias-state-success-primary,#2fbf71) 32%,var(--dsw-alias-border-l3,currentColor));background:color-mix(in srgb,var(--dsw-alias-state-success-primary,#2fbf71) 7%,var(--dsw-alias-bg-elevated,Canvas))}
       .dsh-ol-toast-icon{width:14px;height:14px;flex:none;color:var(--dsw-alias-state-success-primary,#2fbf71)}
       .dsh-ol-toast-text{min-width:0;overflow:hidden;text-overflow:ellipsis}
       @keyframes dsh-ol-toast-life{0%{opacity:0;transform:translateY(-4px) scale(.98)}10%,82%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-2px) scale(.99)}}
@@ -439,7 +437,6 @@ window.__ModuleLoader__.load({
       .dsh-ol-src-bar button:disabled{opacity:.45;cursor:default}
       .dsh-ol-src-bar button.primary{color:#fff;background:#138a59;border-color:#138a59}
       .dsh-ol-src-bar button.primary:hover:not(:disabled){background:#0f7449}
-      .dsh-ol-src-path{padding:0 10px 6px;font-family:ui-monospace,SFMono-Regular,monospace;font-size:11px;opacity:.55;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:none}
       .dsh-ol-src-note{margin:0 10px 6px;padding:6px 9px;border-radius:7px;font-size:11.5px;line-height:1.5;flex:none;overflow-wrap:anywhere}
       .dsh-ol-src-note.error{color:#c34c4c;background:#c34c4c12;border:1px solid #c34c4c33}
       .dsh-ol-src-note.ok{color:#238155;background:#23815510;border:1px solid #23815533}
@@ -1286,7 +1283,6 @@ window.__ModuleLoader__.load({
         observer.observe(node);
         return () => observer.disconnect();
       }, []);
-      const [syncEnded, setSyncEnded] = useState(false);
       /** {path, startedAt}: a save whose push is still settling, polled below. */
       const [pushWatch, setPushWatch] = useState(undefined);
       /** Bumped on every buffer change, so the autosave timer restarts. */
@@ -1316,6 +1312,10 @@ window.__ModuleLoader__.load({
         }, 5000);
         return () => clearTimeout(timer);
       }, [toast]);
+
+      const showToast = useCallback((text, tone = 'success') => {
+        setToast({ key: ++toastSequence.current, text, tone });
+      }, []);
 
       const adopt = useCallback((result) => {
         live.current = { text: result.text, baseText: result.text, mtimeMs: result.mtimeMs, dirty: false };
@@ -1374,23 +1374,6 @@ window.__ModuleLoader__.load({
           .catch(() => {});
         return undefined;
       }, [api, sessionId, compile]);
-
-      // The Session knows its workspace root, so this works even before the
-      // local-directory hint is available (for example after a restart).
-      useEffect(() => {
-        if (sessionId === undefined || tab.visible === false) return undefined;
-        let cancelled = false;
-        const update = (status) => {
-          if (!cancelled) setSyncEnded(!['connected', 'connecting', 'reconnecting'].includes(status.phase));
-        };
-        const changed = (event) => {
-          const dir = localPath ?? sessionDirs()[sessionId];
-          if (dir !== undefined && sameDir(dir, event.detail?.localDir)) update(event.detail);
-        };
-        window.addEventListener('dsh-overleaf:live', changed);
-        void api('live', { ...where(), action: 'status' }).then(update).catch(() => {});
-        return () => { cancelled = true; window.removeEventListener('dsh-overleaf:live', changed); };
-      }, [api, sessionId, path, tab.visible, localPath]);
 
       // One workspace-level poller batches all open source tabs into a single
       // readFiles RPC. It preserves the old three-way merge behaviour while
@@ -1571,17 +1554,11 @@ window.__ModuleLoader__.load({
         setNotice('');
         setToast(undefined);
         try {
-          // Make sure a just-saved edit reached Overleaf before the server
-          // compiles; otherwise the compile result is one revision behind.
-          try { await api('live', { ...where(), action: 'flush' }); } catch { /* snapshot mode */ }
           // Compile the file that is open, not whichever .tex the host guesses.
           const result = await api('compile', { ...where(), main_file: path });
           setCompile(result);
           if (result.status === 'success') {
-            setToast({
-              key: ++toastSequence.current,
-              text: '编译成功，PDF 已更新。',
-            });
+            showToast('编译成功，PDF 已更新。');
             if (typeof localPath === 'string') {
               rememberPrepared(localPath, { ...readPrepared(localPath), localDir: localPath, bound: true, hasPdf: true });
             }
@@ -1593,30 +1570,6 @@ window.__ModuleLoader__.load({
       };
 
       const openPdf = () => { setPdfOpen((value) => !value); };
-
-      /**
-       * End (or resume) the realtime session without leaving the workspace.
-       * Ending flushes the current buffer, closes the watcher and the polling
-       * connection, and keeps every file on disk.
-       */
-      const toggleSync = async () => {
-        if (sessionId === undefined || busy !== '') return;
-        if (!syncEnded && live.current.dirty) {
-          const saved = await save();
-          if (!saved) return;
-        }
-        setBusy('live');
-        setNotice('');
-        try {
-          await api('live', { ...where(), action: syncEnded ? 'start' : 'stop' });
-          setSyncEnded(!syncEnded);
-          setNotice(syncEnded
-            ? '已恢复实时同步。'
-            : '已结束实时同步；改动已推送，文件保留在本机。');
-          setError('');
-        } catch (e) { setError(errorText(e)); }
-        finally { setBusy(''); }
-      };
 
       if (target === undefined) {
         return h('div', { className: 'dsh-ol-src' }, h('style', null, SOURCE_CSS + EDITOR_CSS),
@@ -1637,7 +1590,6 @@ window.__ModuleLoader__.load({
       };
 
       const errors = compile === undefined ? [] : compile.errors.slice(0, 12);
-      const statusLine = dirty ? '未保存' : busy === 'load' ? '读取中…' : '已保存';
       const outline = sourceOutline(file?.text ?? '');
 
       return h('div', { className: 'dsh-ol-src' }, h('style', null, SOURCE_CSS + EDITOR_CSS),
@@ -1645,24 +1597,19 @@ window.__ModuleLoader__.load({
           h('span', { className: 'dsh-ol-src-name' }, basenameOf(path)),
           h('span', { className: 'dsh-ol-src-spacer' }),
           h('button', { disabled: file === undefined, onClick: () => setOutlineOpen((value) => !value) }, outlineOpen ? '隐藏大纲' : '大纲'),
-          h('button', { disabled: busy === 'save' || busy === 'load' || saving || !dirty,
-            onClick: () => { void save(); } },
-            busy === 'save' ? '保存中…' : '保存'),
           h('button', { className: 'primary', disabled: busy !== '', onClick: () => { void compileNow(); } },
             busy === 'compile' ? '编译中…' : '编译'),
           hasPdf ? h('button', { 'aria-pressed': pdfOpen, onClick: openPdf }, pdfOpen ? '收起 PDF' : '分屏 PDF') : null,
-          h('button', { disabled: busy !== '', title: syncEnded
-            ? '重新建立与 Overleaf 的实时连接'
-            : '推送当前改动后关闭实时连接，停止监听文件；文件保留在本机',
-          onClick: () => { void toggleSync(); } },
-          busy === 'live' ? '处理中…' : syncEnded ? '恢复同步' : '结束'),
           toast !== undefined && error === '' ? h('div', {
             key: toast.key,
             className: 'dsh-ol-toast',
+            'data-tone': toast.tone ?? 'success',
             role: 'status',
             'aria-live': 'polite',
           },
-          typeof NativeSuccessIcon === 'function'
+          toast.tone === 'neutral'
+            ? null
+            : typeof NativeSuccessIcon === 'function'
             ? h(NativeSuccessIcon, { size: 14, className: 'dsh-ol-toast-icon' })
             : h('svg', {
               className: 'dsh-ol-toast-icon',
@@ -1675,7 +1622,6 @@ window.__ModuleLoader__.load({
               'aria-hidden': 'true',
             }, h('circle', { cx: 8, cy: 8, r: 6.25 }), h('path', { d: 'm5 8 2 2 4-4.25' })),
           h('span', { className: 'dsh-ol-toast-text' }, toast.text)) : null),
-        h('div', { className: 'dsh-ol-src-path' }, `${path} · ${statusLine}`),
         error !== '' ? h('div', { className: 'dsh-ol-src-note error' }, error) : null,
         notice !== '' && error === '' ? h('div', { className: 'dsh-ol-src-note ok' }, notice) : null,
         recovery !== undefined ? h('div', { className: 'dsh-ol-src-recovery' },
@@ -1780,24 +1726,6 @@ window.__ModuleLoader__.load({
             busy ? '验证中…' : '验证并登录')));
     }
 
-    /** Live-sync status chip plus start/stop/pause. */
-    function LiveBar({ status, onLive, busy }) {
-      if (status === undefined) return null;
-      const phase = status.phase ?? 'idle';
-      const running = phase === 'connected' || phase === 'connecting' || phase === 'reconnecting';
-      return h('div', { className: 'dsh-ol-toolbar' },
-        h('span', { className: `dsh-ol-chip ${phase}` }, h('span', { className: 'dot' }),
-          `${phaseLabel[phase] ?? phase}${status.paused ? ' · 已暂停' : ''}`),
-        h('span', { className: 'dsh-ol-muted' },
-          `协作者 ${status.collaborators ?? 0} · 文档 ${status.joinedDocs ?? 0} · 待推送 ${status.pending ?? 0}`),
-        running ? h('button', { disabled: busy, onClick: () => onLive(status.paused ? 'resume' : 'pause') },
-          status.paused ? '恢复推送' : '暂停推送') : null,
-        running
-          ? h('button', { disabled: busy, onClick: () => onLive('stop') }, '停止实时同步')
-          : h('button', { disabled: busy, onClick: () => onLive('start') }, '启动实时同步'),
-        status.error ? h('span', { className: 'dsh-ol-dirty' }, status.error) : null);
-    }
-
     /** Render only the visible rows of a potentially very large project tree. */
     function VirtualFileList({ entries, file, busy, onOpen }) {
       const [scrollTop, setScrollTop] = useState(0);
@@ -1825,7 +1753,6 @@ window.__ModuleLoader__.load({
       const [entries, setEntries] = useState([]);
       const [file, setFile] = useState(undefined);
       const [dirty, setDirty] = useState(false);
-      const [status, setStatus] = useState(undefined);
       const [busy, setBusy] = useState('');
       const [error, setError] = useState('');
       const [notice, setNotice] = useState('');
@@ -1863,16 +1790,9 @@ window.__ModuleLoader__.load({
         } catch (e) { setError(errorText(e)); } finally { setBusy(''); }
       }, [api, workspace.localDir]);
 
-      const refreshStatus = useCallback(async () => {
-        try { setStatus(await api('status', { local_path: workspace.localDir })); } catch { /* keep last */ }
-      }, [api, workspace.localDir]);
-
       useEffect(() => {
         loadFiles().catch((e) => setError(errorText(e)));
-        void refreshStatus();
-        const timer = setInterval(() => { void refreshStatus(); }, POLL_MS);
-        return () => clearInterval(timer);
-      }, [loadFiles, refreshStatus]);
+      }, [loadFiles]);
 
       useEffect(() => {
         if (file !== undefined) return;
@@ -1975,12 +1895,6 @@ window.__ModuleLoader__.load({
         } catch (e) { setError(errorText(e)); } finally { setBusy(''); }
       }, [api, workspace.localDir, dirty, save, file?.path]);
 
-      const onLive = async (action) => {
-        setBusy('live');
-        try { setStatus(await api('live', { local_path: workspace.localDir, action })); }
-        catch (e) { setError(errorText(e)); } finally { setBusy(''); }
-      };
-
       const header = h('div', { className: 'dsh-ol-row-head', style: { marginBottom: 12 } },
         h('div', null,
           h('div', { className: 'dsh-ol-title' }, workspace.projectName),
@@ -1996,8 +1910,6 @@ window.__ModuleLoader__.load({
         h('span', { className: 'dsh-ol-actions' },
           dirty ? h('span', { className: 'dsh-ol-dirty' }, '未保存') : null,
           h('button', { disabled: file === undefined, onClick: () => setOutlineOpen((value) => !value) }, outlineOpen ? '隐藏大纲' : '大纲'),
-          h('button', { disabled: !dirty || busy === 'save', onClick: () => { void save(); } },
-            busy === 'save' ? '保存中…' : '保存 (⌘S)'),
           h('button', { className: 'dsh-ol-primary', disabled: busy !== '', onClick: () => { void compileNow(); } },
             busy === 'compile' ? '编译中…' : '编译')));
 
@@ -2032,7 +1944,6 @@ window.__ModuleLoader__.load({
         errorList);
 
       return h('div', { className: 'dsh-ol-card' }, h('style', null, EDITOR_CSS), header,
-        h(LiveBar, { status, onLive, busy: busy !== '' }),
         error ? h('p', { className: 'dsh-ol-error' }, error) : null,
         notice ? h('p', { className: 'dsh-ol-ok' }, notice) : null,
         recovery !== undefined ? h('div', { className: 'dsh-ol-src-recovery' },
@@ -2058,7 +1969,6 @@ window.__ModuleLoader__.load({
       const [loginError, setLoginError] = useState('');
       const [openError, setOpenError] = useState('');
       const [editing, setEditing] = useState(undefined);
-      const [live, setLive] = useState({});
       const [projectPage, setProjectPage] = useState(0);
       const [workspacePage, setWorkspacePage] = useState(0);
       const [projectQuery, setProjectQuery] = useState('');
@@ -2088,24 +1998,6 @@ window.__ModuleLoader__.load({
         return () => { offSessions?.(); offWorkspaces?.(); offSelection?.(); };
       }, [ctx]);
 
-      // Live phases come from the host's in-memory sessions, not from the
-      // project list, so they need their own cheap poll while the panel is open.
-      useEffect(() => {
-        let cancelled = false;
-        const load = async () => {
-          try {
-            const overview = await api('overview');
-            if (cancelled) return;
-            setLive(Object.fromEntries(overview.workspaces.map((item) => [item.localDir, item])));
-          } catch { /* keep the last known status */ }
-        };
-        void load();
-        const timer = setInterval(() => {
-          if (document.visibilityState === 'visible') void load();
-        }, 4000);
-        return () => { cancelled = true; clearInterval(timer); };
-      }, [api]);
-
       const run = async (key, action) => {
         setBusy(key); setError(''); setNotice(''); setLoginError(''); setOpenError('');
         try { await action(); await refresh(); } catch (e) {
@@ -2129,7 +2021,7 @@ window.__ModuleLoader__.load({
         const primary = data?.primary ?? 'https://www.overleaf.com';
         const existing = data.workspaces.find((item) => item.server === primary && item.projectId === project.id);
         const result = await api('open', { base_url: primary, project_id: project.id, project_name: project.name });
-        setNotice(`已打开本地工作区 ${project.name}。可在侧边栏选择「连接」启动同步。`);
+        setNotice(`已打开本地工作区 ${project.name}。`);
         if (result.workspaceId !== null && result.workspaceId !== undefined) {
           await enterWorkspace(result.workspaceId, result.localDir);
         }
@@ -2168,16 +2060,6 @@ window.__ModuleLoader__.load({
         if (!window.confirm(`删除“${workspace.projectName}”的本地工作区？\n\n本地工作区文件和会话绑定会被删除，Overleaf 云端项目不会受影响。`)) return;
         await api('clearCache', { local_path: workspace.localDir });
         setNotice(`已删除 ${workspace.projectName} 的本地工作区。它现在可以从下方 Overleaf 项目重新创建。`);
-      });
-
-      const stopLive = (workspace) => run(`stop:${workspace.localDir}`, async () => {
-        await api('live', { local_path: workspace.localDir, action: 'stop' });
-        setNotice(`已结束 ${workspace.projectName} 的实时同步；工作区文件保留在本机。`);
-      });
-
-      const startLive = (workspace) => run(`start:${workspace.localDir}`, async () => {
-        await api('live', { local_path: workspace.localDir, action: 'start' });
-        setNotice(`已恢复 ${workspace.projectName} 的实时同步。`);
       });
 
       if (data === undefined) {
@@ -2240,10 +2122,6 @@ window.__ModuleLoader__.load({
         filteredWorkspaces.length === 0
           ? h('div', { className: 'dsh-ol-empty' }, normalizedWorkspaceQuery === '' ? '还没有本地工作区。先在下方选择已有 Overleaf 项目创建。' : '没有匹配的本地工作区。')
           : h('div', { className: 'dsh-ol-rows' }, visibleWorkspaces.map((workspace) => {
-            const status = live[workspace.localDir];
-            const phase = status?.phase ?? 'idle';
-            const running = phase === 'connected' || phase === 'connecting' || phase === 'reconnecting';
-            const collaborators = status?.collaborators ?? 0;
             const sessions = sessionsOfWorkspace(ctx, workspace.localDir);
             const current = ctx.uiWorkspace?.selection?.getSnapshot?.().sessionId;
             const openingLast = busy === `enter:${workspace.localDir}`;
@@ -2266,12 +2144,6 @@ window.__ModuleLoader__.load({
                   h('button', { disabled: busy !== '' || !workspace.bound,
                     onClick: () => { void newSession(workspace); } },
                   busy === `new:${workspace.localDir}` ? '创建中…' : '新建会话'),
-                  running
-                    ? h('button', { disabled: busy !== '', onClick: () => { void stopLive(workspace); } },
-                      busy === `stop:${workspace.localDir}` ? '结束中…' : '断开连接')
-                    : h('button', { disabled: busy !== '' || !workspace.bound,
-                      onClick: () => { void startLive(workspace); } },
-                    busy === `start:${workspace.localDir}` ? '启动中…' : '连接'),
                   h('button', { className: 'dsh-ol-danger', disabled: busy !== '' || !workspace.bound,
                     onClick: () => { void clearCache(workspace); } },
                   busy === `delete:${workspace.localDir}` ? '删除中…' : '删除'))),
@@ -2685,6 +2557,7 @@ window.__ModuleLoader__.load({
       let flash;
       let flashTimer;
       let frame;
+      const autoLiveRuns = new Map();
 
       const el = (tag, className, text) => {
         const node = document.createElement(tag);
@@ -2770,8 +2643,7 @@ window.__ModuleLoader__.load({
           if (workspace === undefined) return [];
           const running = ['connected', 'connecting', 'reconnecting'].includes(workspace.phase);
           const children = [
-            { id: 'status', label: subtitle(workspace), disabled: true },
-            { id: 'connect', label: running ? '断开连接' : '连接', icon: { key: 'overleaf.link' }, run: () => toggleSync(workspace) },
+            { id: 'connect', label: running ? '断开同步' : '重新连接', icon: { key: 'overleaf.link' }, run: () => toggleSync(workspace) },
             { id: 'new', label: '新建会话', icon: { key: 'overleaf.new' }, run: () => startNewSession(workspace) },
           ];
           if (workspace.phase === 'connected') {
@@ -2838,16 +2710,8 @@ window.__ModuleLoader__.load({
       });
 
       const subtitle = (workspace) => {
-        if (workspace.phase === 'connected') {
-          const extras = [workspace.paused ? '已暂停' : '实时同步中'];
-          if (workspace.collaborators > 0) extras.push(`${workspace.collaborators} 人在线`);
-          if (workspace.pending > 0) extras.push(`${workspace.pending} 待推送`);
-          return extras.join(' · ');
-        }
         if (workspace.phase === 'error') return workspace.error || '连接出错';
-        if (workspace.phase === 'connecting') return '连接中…';
-        if (workspace.phase === 'reconnecting') return '重连中…';
-        return '本地工作区 · 未连接';
+        return '';
       };
 
       /** Native workspace rows for the directories this plugin owns. */
@@ -2931,6 +2795,34 @@ window.__ModuleLoader__.load({
         clearTimeout(flashTimer);
         flashTimer = setTimeout(() => { flash = undefined; render(); }, 8000);
         render();
+      }
+
+      /**
+       * Opening a session is enough to start sync. Normal connection states stay
+       * invisible; only conflicts and actionable failures reach the UI.
+       */
+      function ensureLive(localDir) {
+        if (typeof localDir !== 'string' || workspaceItemOf(ctx, localDir) === undefined) {
+          return Promise.resolve(undefined);
+        }
+        const pending = autoLiveRuns.get(localDir);
+        if (pending !== undefined) return pending;
+        const run = api('live', { local_path: localDir, action: 'start' })
+          .then((status) => {
+            if ((status?.conflicts ?? 0) > 0) {
+              setFlash('error', `${status.conflicts} 个启动冲突已保留本地草稿，云端版本已载入。`);
+            }
+            return status;
+          })
+          .catch((error) => {
+            setFlash('error', `${errorText(error)}`);
+            return undefined;
+          })
+          .finally(() => {
+            if (autoLiveRuns.get(localDir) === run) autoLiveRuns.delete(localDir);
+          });
+        autoLiveRuns.set(localDir, run);
+        return run;
       }
 
       /** Run one sidebar action, keeping a single action in flight at a time. */
@@ -3050,7 +2942,6 @@ window.__ModuleLoader__.load({
           const nativeTitle = workspaceItemOf(ctx, record.localDir)?.title?.trim();
           const folderName = record.localDir.replace(/\/+$/u, '').split('/').pop();
           const workspace = { ...record, projectName: nativeTitle && nativeTitle !== folderName ? nativeTitle : record.projectName };
-          const running = ['connected', 'connecting', 'reconnecting'].includes(workspace.phase);
           const expanded = !closedProjects.has(workspace.localDir);
           const row = el('div', 'dsh-ol-sb-row');
           row.dataset.localDir = workspace.localDir;
@@ -3062,16 +2953,13 @@ window.__ModuleLoader__.load({
           leading.type = 'button'; leading.setAttribute('aria-expanded', String(expanded));
           leading.setAttribute('aria-label', `${expanded ? '折叠' : '展开'} ${workspace.projectName} 的会话`);
           leading.append(icon(expanded ? 'folder-open-regular' : 'folder-close-regular', 'dsh-ol-sb-folder'), icon('triangle-right-fill-regular', 'dsh-ol-sb-arrow'));
-          if (running || workspace.phase === 'error') leading.append(el('span', `dsh-ol-sb-status ${workspace.phase}`));
           leading.addEventListener('click', (event) => { event.stopPropagation(); closeMenu(); toggleProject(workspace); });
           const actions = el('span', 'dsh-ol-sb-actions');
           const more = iconButton('ellipsis-outline-regular', `更多操作：${workspace.projectName}`, (event) => openMenu(workspace, event.currentTarget));
           more.setAttribute('data-context-menu-trigger', '');
           more.setAttribute('aria-haspopup', 'menu'); more.setAttribute('aria-expanded', 'false');
-          const connect = iconButton('link-outline-regular', `${running ? '断开连接' : '连接'}：${workspace.projectName}`, () => { void toggleSync(workspace); });
-          if (running) connect.classList.add('connected');
           const create = iconButton('new-chat-outline-regular', `新建会话：${workspace.projectName}`, () => { void startNewSession(workspace); });
-          for (const button of [more, connect, create]) { button.disabled = busy !== '' || (button !== more && !workspace.bound); actions.append(button); }
+          for (const button of [more, create]) { button.disabled = busy !== '' || (button !== more && !workspace.bound); actions.append(button); }
           row.append(leading, el('span', 'dsh-ol-sb-title', workspace.projectName), actions);
           const enter = () => { closeMenu(); toggleProject(workspace); };
           row.addEventListener('click', enter);
@@ -3146,6 +3034,13 @@ window.__ModuleLoader__.load({
           snapshot = await api('overview');
           schedule();
           syncMode();
+          const sessionId = ctx.uiWorkspace?.selection?.getSnapshot?.().sessionId;
+          if (typeof sessionId === 'string') {
+            const known = sessionDirs()[sessionId];
+            const localDir = typeof known === 'string' ? known
+              : workspaceItems(ctx).find((item) => item.sessionIds?.includes(sessionId))?.path;
+            if (typeof localDir === 'string') void ensureLive(localDir);
+          }
         } catch (error) {
           console.warn('[dsh-overleaf] sidebar refresh failed:', error);
         }
@@ -3197,16 +3092,20 @@ window.__ModuleLoader__.load({
           // A selection update is a data change, not a reason to replace the
           // left navigation shell. Workspace changes still use render().
           updateSelectedSession();
+          const sessionId = ctx.uiWorkspace?.selection?.getSnapshot?.().sessionId;
+          if (typeof sessionId === 'string') {
+            const known = sessionDirs()[sessionId];
+            const localDir = typeof known === 'string' ? known
+              : workspaceItems(ctx).find((item) => item.sessionIds?.includes(sessionId))?.path;
+            if (typeof localDir === 'string') void ensureLive(localDir);
+          }
           if (!entering && !isOverleafActive()) schedule();
         });
       } catch (error) {
         console.warn('[dsh-overleaf] session selection subscription failed:', error);
       }
       const timer = setInterval(() => {
-        if (document.visibilityState === 'visible') {
-          decorateFileTreeRows();
-          void refresh();
-        }
+        if (document.visibilityState === 'visible') decorateFileTreeRows();
       }, 4000);
       // A split can seed a second files page after the entry pass has run; keep
       // the editor pane free of it while an Overleaf Session is on screen.
@@ -3227,6 +3126,7 @@ window.__ModuleLoader__.load({
 
       return {
         refresh,
+        ensureLive,
         beginEnter({ maskDock = true } = {}) {
           entering = true;
           holdRightbarTrack();
@@ -3272,10 +3172,11 @@ window.__ModuleLoader__.load({
       };
     }
 
-    /** The panellist icon: a document with a leaf. */
-    function Icon() {
-      return h('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none',
-        stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round' },
+    /** Use the same monochrome glyph and sidebar-owned size as Harness panels. */
+    function Icon({ size = 20 }) {
+      if (typeof NativeWorkspaceIcon === 'function') return h(NativeWorkspaceIcon, { size });
+      return h('svg', { width: size, height: size, viewBox: '0 0 24 24', fill: 'none',
+        stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' },
         h('path', { d: 'M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z' }),
         h('path', { d: 'M14 2v5h5' }),
         h('path', { d: 'M9 15c2.5 0 4.5-2 4.5-4.5V9H12c-2.5 0-4.5 2-4.5 4.5v1.2' }));
@@ -3428,6 +3329,7 @@ window.__ModuleLoader__.load({
         async function enterWorkspace(workspaceId, localDir, options = {}) {
           const enterToken = ++activeEnterToken;
           rememberRoot(localDir);
+          void sidebarSection?.ensureLive?.(localDir);
           const preparePromise = api('prepare', { local_path: localDir })
             .then((result) => { rememberPrepared(localDir, result); return result; })
             .catch((error) => { console.warn('[dsh-overleaf] prepare failed:', error); return readPrepared(localDir); });

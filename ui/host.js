@@ -137,6 +137,7 @@ export async function registerOverleafUi(ctx, host, runtime) {
           paused: status.paused === true,
           collaborators: status.collaborators ?? 0,
           pending: status.pending ?? 0,
+          conflicts: status.conflicts ?? 0,
           error: status.error ?? '',
         };
       });
@@ -313,6 +314,7 @@ export async function registerOverleafUi(ctx, host, runtime) {
       const state = readProjectState(localDir);
       if (state === undefined) throw new Error('这个目录不是 Overleaf 工作区。');
       const mainFile = mainFileUnder(localDir, request.main_file);
+      await runtime.live.ensureCurrent(localDir);
       const client = runtime.createClient(state.server);
       const result = await runtime.compile(client, localDir, {
         signal,
@@ -354,11 +356,11 @@ export async function registerOverleafUi(ctx, host, runtime) {
     overview: { result: z.object({ servers: z.number(),
       workspaces: z.array(z.object({ localDir: z.string(), projectName: z.string(), server: z.string(),
         projectId: z.string(), removedSessionIds: z.array(z.string()), bound: z.boolean(), phase: z.string(), paused: z.boolean(),
-        collaborators: z.number(), pending: z.number(), error: z.string() })) }) },
+        collaborators: z.number(), pending: z.number(), conflicts: z.number(), error: z.string() })) }) },
     status: { request: z.object({ local_path: z.string().min(1).max(8192) }).strict(),
       result: z.object({ localDir: z.string(), projectId: z.string().optional(), projectName: z.string().optional(),
         server: z.string().optional(), phase: z.string(), paused: z.boolean(), collaborators: z.number(),
-        joinedDocs: z.number(), pending: z.number(), flushing: z.boolean().optional(),
+        joinedDocs: z.number(), pending: z.number(), conflicts: z.number(), flushing: z.boolean().optional(),
         inFlight: z.number().optional(), lastRemoteAt: z.string().nullable().optional(),
         lastPushAt: z.string().nullable().optional(), lastPushPath: z.string().nullable().optional(),
         pushError: z.string().optional(), pushErrorAt: z.string().nullable().optional(), error: z.string() }) },
@@ -366,7 +368,7 @@ export async function registerOverleafUi(ctx, host, runtime) {
       action: z.enum(['start', 'stop', 'pause', 'resume', 'flush', 'status']) }).strict(),
       result: z.object({ localDir: z.string(), projectId: z.string().optional(), projectName: z.string().optional(),
         server: z.string().optional(), phase: z.string(), paused: z.boolean(), collaborators: z.number(),
-        joinedDocs: z.number(), pending: z.number(), flushing: z.boolean().optional(),
+        joinedDocs: z.number(), pending: z.number(), conflicts: z.number(), flushing: z.boolean().optional(),
         inFlight: z.number().optional(), lastRemoteAt: z.string().nullable().optional(),
         lastPushAt: z.string().nullable().optional(), lastPushPath: z.string().nullable().optional(),
         pushError: z.string().optional(), pushErrorAt: z.string().nullable().optional(), error: z.string() }) },

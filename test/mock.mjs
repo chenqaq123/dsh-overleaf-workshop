@@ -8,6 +8,7 @@
  */
 
 import { createServer } from 'node:http';
+import { createHash } from 'node:crypto';
 import { zipSync, strToU8 } from 'fflate';
 
 const COOKIE = 'overleaf_session2=s%3Amock-session.sig; sharelatex.sid=s%3Amock.sid';
@@ -17,7 +18,7 @@ const CSRF = 'mock-csrf-token';
 /** Mutable server state the scenarios inspect. */
 export function createMock() {
   const state = {
-    uploads: [], deletes: [], folders: [], compiles: [], compileQueries: [],
+    uploads: [], deletes: [], folders: [], compiles: [], compileQueries: [], events: [], zipDownloads: 0,
     tree: {
       _id: 'p1', name: 'Mock Paper', rootDoc_id: 'doc1',
       rootFolder: [{
@@ -33,6 +34,9 @@ export function createMock() {
     /** Binary fileRef payloads served by `/project/:id/file/:fileId`. */
     fileBytes: { file1: Buffer.from('PNG mock') },
     compileResult: 'success',
+    clearCacheRequests: 0,
+    staleAuxOnce: false,
+    compileLogAfterClear: 'This is pdfTeX',
     /** Delay (ms) before an applyOtUpdate is acknowledged, to model a slow wire. */
     applyDelayMs: 0,
     /** Refuse applyOtUpdate at the HTTP layer, like a lost push request. */
@@ -53,6 +57,25 @@ export function createMock() {
     sockets: new Map(),
     socketCounter: 0,
   };
+  const sha256 = (data) => createHash('sha256').update(data).digest('hex');
+  const findFileRef = (id) => {
+    const walk = (folder) => {
+      for (const file of folder.fileRefs ?? []) if (file._id === id) return file;
+      for (const child of folder.folders ?? []) {
+        const found = walk(child);
+        if (found !== undefined) return found;
+      }
+      return undefined;
+    };
+    return walk(state.tree.rootFolder[0]);
+  };
+  state.setRemoteFileBytes = (id, data, hash = sha256(Buffer.from(data))) => {
+    state.fileBytes[id] = Buffer.from(data);
+    const file = findFileRef(id);
+    if (file !== undefined) file.hash = hash;
+    return hash;
+  };
+  state.setRemoteFileBytes('file1', state.fileBytes.file1);
 
   /** Frame packets for the 0.9 wire format. */
   const frame = (packet) => `\uFFFD${packet.length}\uFFFD${packet}`;
@@ -82,8 +105,13 @@ export function createMock() {
     const [, id, payload] = match;
     const { name, args } = JSON.parse(payload);
     const ack = (value) => enqueue(sid, `6:::${id}+${JSON.stringify(value)}`);
-    if (name === 'joinProject') { ack([state.tree, 'owner', 2]); return; }
+    if (name === 'joinProject') {
+      state.events.push({ type: 'joinProject' });
+      ack([state.tree, 'owner', 2]);
+      return;
+    }
     if (name === 'joinDoc') {
+      state.events.push({ type: 'joinDoc', doc: args[0] });
       const doc = state.docs.get(args[0]);
       if (doc === undefined) { ack([null, [], 0, [], {}]); return; }
       ack([null, encodeLines(doc.text), doc.version, [], {}]);
@@ -91,6 +119,7 @@ export function createMock() {
     }
     if (name === 'leaveDoc') { ack([]); return; }
     if (name === 'applyOtUpdate') {
+      state.events.push({ type: 'applyOtUpdate', doc: args[1]?.doc });
       if (state.applyDelayMs > 0) await new Promise(resolveDelay => setTimeout(resolveDelay, state.applyDelayMs));
       const update = args[1];
       const doc = state.docs.get(update.doc);
@@ -177,6 +206,7 @@ export function createMock() {
           args: [{ message: state.rejectConnection }] })}`);
         enqueue(sid, '0::');
       } else if (projectId !== null && !state.failingTree) {
+        state.events.push({ type: 'joinProject' });
         enqueue(sid, `5:::${JSON.stringify({ name: 'joinProjectResponse',
           args: [{ project: state.tree, publicId: `pub-${sid}`, permissionsLevel: 'owner', protocolVersion: 2 }] })}`);
       }
@@ -208,6 +238,7 @@ export function createMock() {
     }
 
     if (path === '/project/p1/download/zip' && request.method === 'GET') {
+      state.zipDownloads += 1;
       if (!cookieOk) { response.writeHead(302); return response.end(); }
       const zip = zipEntries();
       response.writeHead(200, { 'content-type': 'application/zip' });
@@ -223,7 +254,11 @@ export function createMock() {
       const name = url.searchParams.get('qqfilename');
       const folderId = url.searchParams.get('folder_id');
       state.uploads.push({ name, folderId, bytes: body.length });
-      return json(200, { success: true, entity_id: `new-${state.uploads.length}`, entity_type: name.endsWith('.png') ? 'file' : 'doc' });
+      state.events.push({ type: 'upload', name });
+      const entityId = `new-${state.uploads.length}`;
+      const entityType = name.endsWith('.png') ? 'file' : 'doc';
+      if (entityType === 'doc') state.docs.set(entityId, { version: 0, text: '' });
+      return json(200, { success: true, entity_id: entityId, entity_type: entityType, hash: sha256(Buffer.from(`${name}:${state.uploads.length}`)) });
     }
     if (path === '/project/p1/folder' && request.method === 'POST') {
       const request_ = JSON.parse(body.toString('utf8'));
@@ -239,14 +274,26 @@ export function createMock() {
       return response.end(bytes);
     }
     const destroy = /^\/project\/p1\/(doc|file|folder)\/([^/]+)$/u.exec(path);
-    if (destroy !== undefined && request.method === 'DELETE') {
+    if (destroy !== null && request.method === 'DELETE') {
       state.deletes.push({ type: destroy[1], id: destroy[2] });
+      state.events.push({ type: 'delete', entity: destroy[1], id: destroy[2] });
       response.writeHead(204); return response.end();
     }
     if (path === '/project/p1/compile' && request.method === 'POST') {
       const parsed = JSON.parse(body.toString('utf8'));
       state.compiles.push(parsed);
       state.compileQueries.push(Object.fromEntries(url.searchParams.entries()));
+      if (state.staleAuxOnce) {
+        state.staleAuxOnce = false;
+        state.compileResult = 'failure';
+        state.compileLog = [
+          'This is pdfTeX',
+          '(./output.aux',
+          '! Undefined control sequence.',
+          'l.11 \\@LN@col',
+          'The control sequence was never defined.',
+        ].join('\n');
+      }
       const build = 'b1';
       const urlBase = `/project/p1/user/user-1/build/${build}/output`;
       const outputs = [{ path: 'output.pdf', url: `${urlBase}/output.pdf`, type: 'pdf', build },
@@ -256,6 +303,13 @@ export function createMock() {
           outputFiles: outputs, stats: {}, timings: {} });
       }
       return json(500, { status: 'error' });
+    }
+    if (path === '/project/p1/output' && request.method === 'DELETE') {
+      state.clearCacheRequests += 1;
+      state.compileResult = 'success';
+      state.compileLog = state.compileLogAfterClear;
+      response.writeHead(200);
+      return response.end();
     }
     if (path.endsWith('/output/output.pdf')) {
       response.writeHead(200, { 'content-type': 'application/pdf' });

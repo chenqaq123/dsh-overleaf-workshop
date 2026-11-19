@@ -24,6 +24,7 @@ import { writeProjectState, readProjectState } from '../lib/store.js';
 import { registerOverleafTools } from '../lib/tools.js';
 
 const sleep = (ms) => new Promise(resolveSleep => setTimeout(resolveSleep, ms));
+const sha256 = (data) => createHash('sha256').update(data).digest('hex');
 import { OverleafSync } from '../lib/sync.js';
 import { compileProject, renderCompileResult, guessMainFile, toRpcCompileResult } from '../lib/compile.js';
 import { localChanges } from '../lib/sync.js';
@@ -217,6 +218,27 @@ await test('compile failure parses `! ` errors with line numbers', async () => {
   const text = renderCompileResult(result, { localDir: projectDir });
   assert.ok(text.includes('sections/methods.tex:行 8'), text);
   assert.ok(text.includes('行 27'), text);
+});
+
+await test('template-change stale aux is cleared and compiled once more', async () => {
+  const beforeCompiles = mock.state.compiles.length;
+  const beforeClears = mock.state.clearCacheRequests;
+  mock.state.compileResult = 'success';
+  mock.state.staleAuxOnce = true;
+  mock.state.compileLogAfterClear = [
+    'This is pdfTeX',
+    '(./icml2026.sty',
+    'Package: icml2026 2025/10/29 v2.0 ICML Conference Style File',
+  ].join('\n');
+  const result = await compileProject(client, projectDir);
+  assert.equal(result.status, 'success');
+  assert.equal(mock.state.compiles.length, beforeCompiles + 2,
+    'the failed stale-aux compile must be retried');
+  assert.equal(mock.state.clearCacheRequests, beforeClears + 1,
+    'the retry must clear the server compile cache first');
+  assert.equal(result.errors.length, 0);
+  assert.ok(readFileSync(result.logPath, 'utf8').includes('Package: icml2026'),
+    'the final log must come from the clean ICML compile');
 });
 
 await test('guessMainFile prefers main.tex', () => {
@@ -435,12 +457,14 @@ await test('initial zip content is not pushed over newer realtime content', asyn
 
 await test('bootstrap seeds docs and binary refs without a zip', async () => {
   const dir = freshWorkspace('bootstrap');
+  const zipDownloadsBefore = mock.state.zipDownloads;
   const manager = new LiveManager({ runtime: { createClient: () => client }, log: () => {} });
   const status = await manager.bootstrap(dir, { version: 1, server: baseUrl, projectId: 'p1',
     projectName: 'Mock Paper', files: {} });
   assert.equal(status.phase, 'connected');
   assert.equal(status.hydrated.failed.length, 0);
-  assert.equal(status.hydrated.downloaded, 1);
+  assert.equal(status.hydrated.downloaded, 0);
+  assert.equal(mock.state.zipDownloads, zipDownloadsBefore, 'bootstrap uses the live tree, not a zip');
   assert.ok(existsSync(join(dir, 'fig.png')));
   assert.ok(existsSync(join(dir, 'sections', 'methods.tex')));
   assert.ok(readFileSync(join(dir, 'main.tex'), 'utf8').includes('Hello'));
@@ -508,6 +532,147 @@ function freshWorkspace(name) {
 const openSession = (dir, options = {}) => new OverleafLive({ localDir: dir, state: readProjectState(dir),
   createClient: () => client, log: () => {}, ...options });
 
+await test('startup pulls a remote-only text change before syncing', async () => {
+  const original = { ...mock.state.docs.get('doc1') };
+  const remoteText = 'REMOTE AUTHORITATIVE\n';
+  const doc = mock.state.docs.get('doc1');
+  doc.text = remoteText;
+  doc.version += 1;
+  const dir = freshWorkspace('startup-remote-text');
+  writeFileSync(join(dir, 'main.tex'), 'OLD BASE\n');
+  const state = readProjectState(dir);
+  state.files = { 'main.tex': { base: sha256(Buffer.from('OLD BASE\n')) } };
+  writeProjectState(dir, state);
+  mock.state.events.length = 0;
+  const session = openSession(dir);
+  await session.start();
+  assert.equal(readFileSync(join(dir, 'main.tex'), 'utf8'), remoteText);
+  assert.equal(mock.state.docs.get('doc1').text, remoteText, 'the remote copy is not overwritten');
+  assert.equal(session.conflicts.length, 0);
+  assert.equal(mock.state.events.some((event) => event.type === 'applyOtUpdate' && event.doc === 'doc1'), false);
+  await session.stop();
+  mock.state.docs.set('doc1', { text: original.text, version: doc.version + 1 });
+});
+
+await test('startup joins remote text before uploading a local-only edit', async () => {
+  const original = { ...mock.state.docs.get('doc1') };
+  const baseText = 'BASE BEFORE OFFLINE\n';
+  const localText = 'LOCAL ONLY OFFLINE EDIT\n';
+  const doc = mock.state.docs.get('doc1');
+  doc.text = baseText;
+  doc.version += 1;
+  const dir = freshWorkspace('startup-local-text');
+  writeFileSync(join(dir, 'main.tex'), localText);
+  const state = readProjectState(dir);
+  state.files = { 'main.tex': { base: sha256(Buffer.from(baseText)) } };
+  writeProjectState(dir, state);
+  mock.state.events.length = 0;
+  const session = openSession(dir);
+  await session.start();
+  assert.equal(mock.state.docs.get('doc1').text, localText);
+  const joined = mock.state.events.findIndex((event) => event.type === 'joinDoc' && event.doc === 'doc1');
+  const pushed = mock.state.events.findIndex((event) => event.type === 'applyOtUpdate' && event.doc === 'doc1');
+  assert.ok(joined >= 0 && pushed > joined, JSON.stringify(mock.state.events));
+  await session.stop();
+  mock.state.docs.set('doc1', { text: original.text, version: doc.version + 2 });
+});
+
+await test('startup preserves a both-sides text conflict as a local draft', async () => {
+  const original = { ...mock.state.docs.get('doc1') };
+  const baseText = 'COMMON BASE\n';
+  const localText = 'LOCAL DISCONNECTED EDIT\n';
+  const remoteText = 'REMOTE COLLABORATOR EDIT\n';
+  const doc = mock.state.docs.get('doc1');
+  doc.text = remoteText;
+  doc.version += 1;
+  const dir = freshWorkspace('startup-text-conflict');
+  writeFileSync(join(dir, 'main.tex'), localText);
+  const state = readProjectState(dir);
+  state.files = { 'main.tex': { base: sha256(Buffer.from(baseText)) } };
+  writeProjectState(dir, state);
+  mock.state.events.length = 0;
+  const session = openSession(dir);
+  await session.start();
+  assert.equal(readFileSync(join(dir, 'main.tex'), 'utf8'), remoteText);
+  assert.equal(session.conflicts.length, 1);
+  assert.equal(session.conflicts[0].type, 'text');
+  assert.equal(readFileSync(join(dir, session.conflicts[0].backup), 'utf8'), localText);
+  assert.equal(mock.state.events.some((event) => event.type === 'applyOtUpdate' && event.doc === 'doc1'), false);
+  await session.stop();
+  mock.state.docs.set('doc1', { text: original.text, version: doc.version + 1 });
+});
+
+await test('startup pulls a remote-only binary change', async () => {
+  const originalBytes = Buffer.from(mock.state.fileBytes.file1);
+  const oldBytes = Buffer.from('OLD REMOTE IMAGE');
+  const newBytes = Buffer.from('NEW REMOTE IMAGE');
+  const oldHash = mock.state.setRemoteFileBytes('file1', oldBytes);
+  const dir = freshWorkspace('startup-remote-binary');
+  writeFileSync(join(dir, 'fig.png'), oldBytes);
+  const state = readProjectState(dir);
+  state.files = { 'fig.png': { base: sha256(oldBytes), remote: oldHash } };
+  writeProjectState(dir, state);
+  mock.state.setRemoteFileBytes('file1', newBytes);
+  const deletesBefore = mock.state.deletes.length;
+  const uploadsBefore = mock.state.uploads.length;
+  const session = openSession(dir);
+  await session.start();
+  assert.deepEqual(readFileSync(join(dir, 'fig.png')), newBytes);
+  assert.equal(session.conflicts.length, 0);
+  assert.equal(mock.state.deletes.length, deletesBefore);
+  assert.equal(mock.state.uploads.length, uploadsBefore);
+  await session.stop();
+  mock.state.setRemoteFileBytes('file1', originalBytes);
+});
+
+await test('startup uploads a local-only binary change after validating the remote tree', async () => {
+  const originalBytes = Buffer.from(mock.state.fileBytes.file1);
+  const oldBytes = Buffer.from('OLD REMOTE IMAGE');
+  const localBytes = Buffer.from('LOCAL ONLY IMAGE');
+  const oldHash = mock.state.setRemoteFileBytes('file1', oldBytes);
+  const dir = freshWorkspace('startup-local-binary');
+  writeFileSync(join(dir, 'fig.png'), localBytes);
+  const state = readProjectState(dir);
+  state.files = { 'fig.png': { base: sha256(oldBytes), remote: oldHash } };
+  writeProjectState(dir, state);
+  const deletesBefore = mock.state.deletes.length;
+  const uploadsBefore = mock.state.uploads.length;
+  mock.state.events.length = 0;
+  const session = openSession(dir);
+  await session.start();
+  assert.ok(mock.state.events.some((event) => event.type === 'joinProject'));
+  assert.ok(mock.state.deletes.slice(deletesBefore).some((item) => item.type === 'file' && item.id === 'file1'));
+  assert.ok(mock.state.uploads.slice(uploadsBefore).some((upload) => upload.name === 'fig.png'));
+  await session.stop();
+  mock.state.setRemoteFileBytes('file1', originalBytes);
+});
+
+await test('startup preserves a both-sides binary conflict as a local draft', async () => {
+  const originalBytes = Buffer.from(mock.state.fileBytes.file1);
+  const oldBytes = Buffer.from('COMMON OLD IMAGE');
+  const localBytes = Buffer.from('LOCAL DISCONNECTED IMAGE');
+  const remoteBytes = Buffer.from('REMOTE COLLABORATOR IMAGE');
+  const oldHash = mock.state.setRemoteFileBytes('file1', oldBytes);
+  const dir = freshWorkspace('startup-binary-conflict');
+  writeFileSync(join(dir, 'fig.png'), localBytes);
+  const state = readProjectState(dir);
+  state.files = { 'fig.png': { base: sha256(oldBytes), remote: oldHash } };
+  writeProjectState(dir, state);
+  mock.state.setRemoteFileBytes('file1', remoteBytes);
+  const deletesBefore = mock.state.deletes.length;
+  const uploadsBefore = mock.state.uploads.length;
+  const session = openSession(dir);
+  await session.start();
+  assert.deepEqual(readFileSync(join(dir, 'fig.png')), remoteBytes);
+  assert.equal(session.conflicts.length, 1);
+  assert.equal(session.conflicts[0].type, 'binary');
+  assert.deepEqual(readFileSync(join(dir, session.conflicts[0].backup)), localBytes);
+  assert.equal(mock.state.deletes.length, deletesBefore);
+  assert.equal(mock.state.uploads.length, uploadsBefore);
+  await session.stop();
+  mock.state.setRemoteFileBytes('file1', originalBytes);
+});
+
 await test('the compile RPC payload never carries undefined', () => {
   const payload = toRpcCompileResult({ status: 'failure', pdfPath: undefined,
     errors: [{ message: 'Undefined control sequence.' }], warnings: [] });
@@ -563,6 +728,58 @@ await test('flush pushes a just-saved edit without stopping the session', async 
   assert.equal(status.phase, 'connected');
   assert.equal(mock.state.docs.get('doc1').text, text);
   await session.stop();
+});
+
+await test('starting live sync uploads files and folders created while disconnected', async () => {
+  const dir = freshWorkspace('startup-new-files');
+  writeFileSync(join(dir, 'main.tex'), 'LOCAL ROOT BEFORE CONNECT\n');
+  mkdirSync(join(dir, 'sections'), { recursive: true });
+  writeFileSync(join(dir, 'sections', 'methods.tex'), 'LOCAL NESTED EDIT\n');
+  const template = join(dir, 'template');
+  mkdirSync(template);
+  writeFileSync(join(template, 'icml2026.sty'), 'STYLE KIT\n');
+  const state = readProjectState(dir);
+  state.files = {
+    'main.tex': { base: sha256(Buffer.from(mock.state.docs.get('doc1').text)) },
+    'sections/methods.tex': { base: sha256(Buffer.from(mock.state.docs.get('doc3').text)) },
+  };
+  writeProjectState(dir, state);
+  const uploadsBefore = mock.state.uploads.length;
+  const foldersBefore = mock.state.folders.length;
+  const session = openSession(dir);
+  await session.start();
+  assert.ok(mock.state.docs.get('doc1').text.startsWith('LOCAL ROOT BEFORE CONNECT\n'),
+    'the modified root document is uploaded before start resolves');
+  assert.equal(mock.state.docs.get('doc3').text, 'LOCAL NESTED EDIT\n',
+    'the modified existing nested document is uploaded before start resolves');
+  assert.ok(mock.state.uploads.slice(uploadsBefore).some(upload => upload.name === 'icml2026.sty'),
+    'the new style file is uploaded before start resolves');
+  assert.ok([...mock.state.docs.values()].some(doc => doc.text === 'STYLE KIT\n'),
+    'the new style file content is pushed before start resolves');
+  assert.ok(mock.state.folders.slice(foldersBefore).some(folder => folder.name === 'template'),
+    'the new parent folder is created before start resolves');
+  await session.stop();
+});
+
+await test('starting live sync uploads binary files modified while disconnected', async () => {
+  const original = Buffer.from(mock.state.fileBytes.file1);
+  const dir = freshWorkspace('startup-binary');
+  const old = Buffer.from('OLD IMAGE');
+  const oldHash = mock.state.setRemoteFileBytes('file1', old);
+  const state = readProjectState(dir);
+  state.files = { 'fig.png': { base: sha256(old), remote: oldHash } };
+  writeProjectState(dir, state);
+  writeFileSync(join(dir, 'fig.png'), 'NEW IMAGE');
+  const deletesBefore = mock.state.deletes.length;
+  const uploadsBefore = mock.state.uploads.length;
+  const session = openSession(dir);
+  await session.start();
+  assert.ok(mock.state.deletes.slice(deletesBefore).some(item => item.type === 'file' && item.id === 'file1'),
+    'the previously synced binary is replaced');
+  assert.ok(mock.state.uploads.slice(uploadsBefore).some(upload => upload.name === 'fig.png'),
+    'the modified binary is uploaded before start resolves');
+  await session.stop();
+  mock.state.setRemoteFileBytes('file1', original);
 });
 
 await test('a rejected push is reported and the next save recovers', async () => {
@@ -737,6 +954,35 @@ await test('LiveManager creates folders only for a running session', async () =>
   assert.equal(await manager.createFolder(dir, 'from-manager'), true);
   assert.ok(mock.state.folders.some(folder => folder.name === 'from-manager'));
   await manager.stopAll();
+});
+
+await test('concurrent automatic starts share one Overleaf connection', async () => {
+  const dir = freshWorkspace('manager-concurrent');
+  const manager = new LiveManager({ runtime: { createClient: () => client }, log: () => {} });
+  const socketsBefore = mock.state.socketCounter;
+  const statuses = await Promise.all([
+    manager.start(dir),
+    manager.start(dir),
+    manager.start(dir),
+  ]);
+  assert.equal(manager.sessions.size, 1);
+  assert.equal(mock.state.socketCounter - socketsBefore, 1);
+  assert.deepEqual(statuses.map((status) => status.phase), ['connected', 'connected', 'connected']);
+  await manager.stopAll();
+});
+
+await test('opening and navigating sessions wires one silent background start', () => {
+  const root = new URL('..', import.meta.url);
+  const backend = readFileSync(new URL('index.js', root), 'utf8');
+  const clientSource = readFileSync(new URL('ui/client.js', root), 'utf8');
+  assert.match(backend, /void this\.runtime\.live\.start\(dir\)/u);
+  assert.match(clientSource, /void sidebarSection\?\.ensureLive\?\.\(localDir\)/u);
+  assert.ok(clientSource.includes("api('live', { local_path: localDir, action: 'start' })"));
+  assert.ok(clientSource.includes('const pending = autoLiveRuns.get(localDir);'));
+  assert.equal(clientSource.includes('h(LiveBar'), false);
+  assert.equal(clientSource.includes('启动实时同步'), false);
+  assert.equal(clientSource.includes('实时同步中'), false);
+  assert.equal(clientSource.includes('待推送'), false);
 });
 
 await test('the vendored editor chunk has the module-loader contract', () => {
@@ -1272,3 +1518,4 @@ mock.server.close();
 mock.server.closeAllConnections?.();
 rmSync(scratch, { recursive: true, force: true });
 console.log(`\n${passed} scenarios passed`);
+process.exit(0);

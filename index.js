@@ -156,8 +156,13 @@ class OverleafService extends host.cordis.Service {
     const workspace = await this.ensureWorkspace(dir);
     this.projects.put({ ...this.projects.get(dir), localDir: dir, server, projectId, projectName: state.projectName ?? projectName,
       openedAt: new Date().toISOString() });
-    // Opening a local directory never changes its connection state.
-    // Live sync belongs to the workspace and starts only on explicit request.
+    // Opening a conversation means opening its Overleaf workspace. Start in
+    // the background so navigation remains immediate; LiveManager deduplicates
+    // concurrent opens and reuses the socket for every session in this folder.
+    void this.runtime.live.start(dir).catch((error) => {
+      this.pluginCtx?.logger?.warn?.('overleaf: automatic live sync failed for %s: %s',
+        dir, error?.message ?? error);
+    });
     return { localDir: dir, workspaceId: workspace?.id };
   }
 
