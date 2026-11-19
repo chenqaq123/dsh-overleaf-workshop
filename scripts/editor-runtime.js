@@ -14,7 +14,9 @@ import {
   foldService, indentOnInput, syntaxHighlighting, unfoldAll,
 } from '@codemirror/language';
 import { stex } from '@codemirror/legacy-modes/mode/stex';
-import { highlightSelectionMatches, search, searchKeymap } from '@codemirror/search';
+import {
+  closeSearchPanel, highlightSelectionMatches, openSearchPanel, search, searchKeymap, searchPanelOpen,
+} from '@codemirror/search';
 import { Compartment, EditorSelection, EditorState } from '@codemirror/state';
 import {
   EditorView, drawSelection, highlightActiveLine, highlightSpecialChars, keymap, lineNumbers,
@@ -143,9 +145,20 @@ function create(host, options = {}) {
   let suppress = false;
   let completionProvider = typeof options.getCompletions === 'function' ? options.getCompletions : null;
   const readOnly = new Compartment();
+  const phrases = new Compartment();
   const initial = typeof options.value === 'string' ? options.value : '';
   const save = typeof options.onSave === 'function' ? options.onSave : () => {};
   const change = typeof options.onChange === 'function' ? options.onChange : () => {};
+  const phraseDictionary = (locale) => locale === 'zh' ? {
+    Find: '查找', Replace: '替换', next: '下一个', previous: '上一个', all: '全选',
+    'match case': '区分大小写', regexp: '正则', 'by word': '全词匹配',
+    replace: '替换', 'replace all': '全部替换', close: '关闭',
+  } : {
+    Find: 'Find', Replace: 'Replace', next: 'next', previous: 'previous', all: 'all',
+    'match case': 'match case', regexp: 'regexp', 'by word': 'by word',
+    replace: 'replace', 'replace all': 'replace all', close: 'close',
+  };
+  const phraseExtension = (locale) => EditorState.phrases.of(phraseDictionary(locale));
   let view;
   const completionSource = () => (context) => completionAdapter(completionProvider, view);
   view = new EditorView({
@@ -168,11 +181,7 @@ function create(host, options = {}) {
         EditorView.contentAttributes.of({ spellcheck: 'false', autocorrect: 'off', autocapitalize: 'off' }),
         syntaxHighlighting(latexHighlight),
         highlightSelectionMatches(),
-        EditorState.phrases.of({
-          Find: '查找', Replace: '替换', next: '下一个', previous: '上一个', all: '全选',
-          'match case': '区分大小写', regexp: '正则', 'by word': '全词匹配',
-          replace: '替换', 'replace all': '全部替换', close: '关闭',
-        }),
+        phrases.of(phraseExtension(options.locale === 'zh' ? 'zh' : 'en')),
         search({ top: true }),
         autocompletion({ override: [completionSource()], defaultKeymap: false, closeOnBlur: true }),
         readOnly.of(options.readOnly === true ? EditorState.readOnly.of(true) : []),
@@ -223,6 +232,14 @@ function create(host, options = {}) {
     setValue,
     setReadOnly(value) {
       view.dispatch({ effects: readOnly.reconfigure(value === true ? EditorState.readOnly.of(true) : []) });
+    },
+    setLocale(locale) {
+      const searchOpen = searchPanelOpen(view.state);
+      view.dispatch({ effects: phrases.reconfigure(phraseExtension(locale === 'zh' ? 'zh' : 'en')) });
+      if (searchOpen) {
+        closeSearchPanel(view);
+        openSearchPanel(view);
+      }
     },
     setCompletions(provider) { completionProvider = typeof provider === 'function' ? provider : null; },
     revealLine,

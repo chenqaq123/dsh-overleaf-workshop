@@ -21795,6 +21795,10 @@
     },
     provide: (f) => showPanel.from(f, (val) => val.panel)
   });
+  function searchPanelOpen(state) {
+    var _a2;
+    return ((_a2 = state.field(searchState, false)) === null || _a2 === void 0 ? void 0 : _a2.panel) != null;
+  }
   var SearchState = class {
     constructor(query, panel) {
       this.query = query;
@@ -22315,11 +22319,38 @@
     let suppress = false;
     let completionProvider = typeof options.getCompletions === "function" ? options.getCompletions : null;
     const readOnly2 = new Compartment();
+    const phrases = new Compartment();
     const initial = typeof options.value === "string" ? options.value : "";
     const save = typeof options.onSave === "function" ? options.onSave : () => {
     };
     const change = typeof options.onChange === "function" ? options.onChange : () => {
     };
+    const phraseDictionary = (locale) => locale === "zh" ? {
+      Find: "\u67E5\u627E",
+      Replace: "\u66FF\u6362",
+      next: "\u4E0B\u4E00\u4E2A",
+      previous: "\u4E0A\u4E00\u4E2A",
+      all: "\u5168\u9009",
+      "match case": "\u533A\u5206\u5927\u5C0F\u5199",
+      regexp: "\u6B63\u5219",
+      "by word": "\u5168\u8BCD\u5339\u914D",
+      replace: "\u66FF\u6362",
+      "replace all": "\u5168\u90E8\u66FF\u6362",
+      close: "\u5173\u95ED"
+    } : {
+      Find: "Find",
+      Replace: "Replace",
+      next: "next",
+      previous: "previous",
+      all: "all",
+      "match case": "match case",
+      regexp: "regexp",
+      "by word": "by word",
+      replace: "replace",
+      "replace all": "replace all",
+      close: "close"
+    };
+    const phraseExtension = (locale) => EditorState.phrases.of(phraseDictionary(locale));
     let view;
     const completionSource = () => (context) => completionAdapter(completionProvider, view);
     view = new EditorView({
@@ -22342,19 +22373,7 @@
           EditorView.contentAttributes.of({ spellcheck: "false", autocorrect: "off", autocapitalize: "off" }),
           syntaxHighlighting(latexHighlight),
           highlightSelectionMatches(),
-          EditorState.phrases.of({
-            Find: "\u67E5\u627E",
-            Replace: "\u66FF\u6362",
-            next: "\u4E0B\u4E00\u4E2A",
-            previous: "\u4E0A\u4E00\u4E2A",
-            all: "\u5168\u9009",
-            "match case": "\u533A\u5206\u5927\u5C0F\u5199",
-            regexp: "\u6B63\u5219",
-            "by word": "\u5168\u8BCD\u5339\u914D",
-            replace: "\u66FF\u6362",
-            "replace all": "\u5168\u90E8\u66FF\u6362",
-            close: "\u5173\u95ED"
-          }),
+          phrases.of(phraseExtension(options.locale === "zh" ? "zh" : "en")),
           search({ top: true }),
           autocompletion({ override: [completionSource()], defaultKeymap: false, closeOnBlur: true }),
           readOnly2.of(options.readOnly === true ? EditorState.readOnly.of(true) : []),
@@ -22409,6 +22428,14 @@
       setValue,
       setReadOnly(value) {
         view.dispatch({ effects: readOnly2.reconfigure(value === true ? EditorState.readOnly.of(true) : []) });
+      },
+      setLocale(locale) {
+        const searchOpen = searchPanelOpen(view.state);
+        view.dispatch({ effects: phrases.reconfigure(phraseExtension(locale === "zh" ? "zh" : "en")) });
+        if (searchOpen) {
+          closeSearchPanel(view);
+          openSearchPanel(view);
+        }
       },
       setCompletions(provider) {
         completionProvider = typeof provider === "function" ? provider : null;

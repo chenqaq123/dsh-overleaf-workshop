@@ -1005,8 +1005,8 @@ await test('the vendored editor chunk has the module-loader contract', () => {
   assert.ok(client.includes("require.async('./client.editor.js')"));
   assert.ok(client.includes('.cm-ol-keyword{color:var(--dsw-alias-state-idle-primary'));
   assert.ok(client.includes('.cm-ol-comment{color:#6C7086'));
-  assert.ok(client.includes("content:'项目文件'") && client.includes('LAYOUT_CSS + EDITOR_CSS + FILE_TREE_CSS'),
-    'the Overleaf file column keeps its compact toolbar');
+  assert.ok(client.includes('content:attr(data-dsh-ol-files-label)') && client.includes('LAYOUT_CSS + EDITOR_CSS + FILE_TREE_CSS'),
+    'the Overleaf file column keeps its compact, localizable toolbar');
   assert.ok(client.includes('data-dsh-file-icon') && client.includes('data-dsh-file-kind=tex')
     && client.includes('data-dsh-file-kind=folder'),
     'the Overleaf file tree uses semantic file icons');
@@ -1031,6 +1031,49 @@ await test('the vendored editor chunk has the module-loader contract', () => {
     'context menus clean up on dismissal and plugin disposal');
   assert.ok(client.includes('.dsh-ol-cm .cm-panel.cm-search{display:flex'),
     'search controls use the Harness dark theme');
+});
+
+await test('client follows the Harness locale with zh/en copy and English fallback', () => {
+  const source = readFileSync(new URL('../ui/client.js', import.meta.url), 'utf8');
+  const start = source.indexOf('    const UI_COPY = ');
+  const end = source.indexOf('\n    const removedWorkspaceSessions', start);
+  assert.ok(start > 0 && end > start, 'locale copy slice located');
+  const { UI_COPY, translateFor, tr, setLocaleRuntime } = runInNewContext(
+    `${source.slice(start, end)}; ({ UI_COPY, translateFor, tr, setLocaleRuntime: (value) => { localeRuntime = value; } })`,
+    { useSyncExternalStore: () => undefined });
+  assert.deepEqual(Object.keys(UI_COPY.en).sort(), Object.keys(UI_COPY.zh).sort(),
+    'both baseline dictionaries own the same keys');
+  assert.equal(UI_COPY.en['editor.compile'], 'Compile');
+  assert.equal(UI_COPY.zh['editor.compile'], '编译');
+  assert.equal(translateFor('ja', 'editor.compile'), 'Compile',
+    'a locale without a plugin dictionary falls back to English');
+  assert.equal(translateFor('zh', 'outline.itemMany', { count: 2 }), '2 项',
+    'translation placeholders are interpolated');
+  setLocaleRuntime({
+    getSnapshot: () => ({ active: 'ja' }),
+    bind: () => () => '不应使用',
+  });
+  assert.equal(tr('editor.compile'), 'Compile',
+    'an unsupported Harness locale also falls back to English through tr()');
+  setLocaleRuntime({
+    getSnapshot: () => ({ active: 'zh-CN' }),
+    bind: (namespace) => (key) => namespace === 'overleaf' && key === 'editor.compile' ? '编译' : key,
+  });
+  assert.equal(tr('editor.compile'), '编译',
+    'the bound Harness translator is used for a registered locale');
+  assert.match(source, /inject: \[[^\]]*'locale'/u,
+    'the client waits for the Harness locale service');
+  assert.match(source,
+    /locale\.register\(LOCALE_NS, 'en', UI_COPY\.en\)[\s\S]*locale\.register\(LOCALE_NS, 'zh', UI_COPY\.zh\)/u,
+    'both dictionaries use the Harness three-argument registration API');
+  assert.match(source, /getSnapshot\?\.\(\)\.active/u,
+    'locale refreshes subscribe to the active language, not an undocumented revision field');
+  const editorRuntime = readFileSync(new URL('../scripts/editor-runtime.js', import.meta.url), 'utf8');
+  assert.match(editorRuntime, /setLocale\(locale\)[\s\S]*phrases\.reconfigure/u,
+    'the CodeMirror search panel can switch dictionaries without recreating the editor');
+  const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.ok(manifest.dsh.client.inject.includes('@deepseek-ai/dsh-client-locale'),
+    'the client bundle declares the locale dependency');
 });
 
 await test('PDF visibility is shared by workspace, persisted, and isolated from other projects', () => {

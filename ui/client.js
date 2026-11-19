@@ -10,6 +10,338 @@ window.__ModuleLoader__.load({
     const NativeWorkspaceIcon = nativePrimitives.IconListPenOutlineRegular;
     const PANEL = 'overleaf';
     const POLL_MS = 1500;
+    const LOCALE_NS = 'overleaf';
+    const UI_COPY = {
+      en: {
+        'common.cancel': 'Cancel',
+        'common.refresh': 'Refresh',
+        'common.collapse': 'Collapse',
+        'common.discard': 'Discard',
+        'common.create': 'Create',
+        'common.creating': 'Creating…',
+        'common.opening': 'Opening…',
+        'common.deleting': 'Deleting…',
+        'common.previous': 'Previous',
+        'common.next': 'Next',
+        'common.justNow': 'Just now',
+        'common.minutesAgo': '{count} min ago',
+        'common.hoursAgo': '{count} hr ago',
+        'files.project': 'Project files',
+        'files.newFile': 'New file',
+        'files.newFolder': 'New folder',
+        'files.exampleFolder': 'e.g. figures',
+        'files.exampleFile': 'e.g. intro.tex',
+        'files.invalidName': 'Enter a file or folder name, for example intro.tex.',
+        'files.readerUnavailable': 'The DSH file service is not ready yet.',
+        'files.createHereFile': 'New file here',
+        'files.createHereFolder': 'New folder here',
+        'editor.loading': 'Loading editor…',
+        'editor.collapse': 'Collapse editor',
+        'editor.noFile': 'No file selected',
+        'editor.unsaved': 'Unsaved',
+        'editor.compile': 'Compile',
+        'editor.compiling': 'Compiling…',
+        'editor.outline': 'Outline',
+        'editor.hideOutline': 'Hide outline',
+        'source.invalidAddress': 'Could not parse this file address.',
+        'source.reopen': 'Could not parse this file address. Reopen it from the workspace file tree.',
+        'pdf.preview': 'PDF preview',
+        'pdf.open': 'Open PDF',
+        'pdf.hide': 'Hide PDF',
+        'pdf.split': 'Split PDF',
+        'pdf.collapseTitle': 'Collapse the PDF and keep the source editor',
+        'pdf.loadFailed': 'Could not load the PDF. Try again.',
+        'pdf.loading': 'Loading PDF…',
+        'pdf.unavailable': 'The DSH PDF preview is not ready yet.',
+        'save.pushFailed': 'Saved locally, but pushing to Overleaf failed: {error}',
+        'save.pushed': 'Saved and pushed to Overleaf.',
+        'save.local': 'Saved locally; live sync is not connected.',
+        'save.settled': 'Saved locally (identical to Overleaf).',
+        'save.pending': 'Saved locally; the push is still in progress…',
+        'save.pushUnavailable': 'Saved locally; push unavailable: {error}',
+        'sync.conflict': 'Remote changes conflicted; your local text was kept.',
+        'draft.foundRecovered': 'An unsaved local draft was found (possibly from an abnormal exit).',
+        'draft.found': 'An unsaved local draft was found.',
+        'draft.recover': 'Recover draft',
+        'draft.restored': 'Local draft restored. Save it to push it to Overleaf.',
+        'outline.title': 'Section outline',
+        'outline.itemOne': '{count} item',
+        'outline.itemMany': '{count} items',
+        'outline.empty': 'This file has no section commands yet.',
+        'outline.unnamed': '(Untitled section)',
+        'outline.lineTitle': '{kind} · line {line}',
+        'compile.successToast': 'Compilation succeeded; PDF updated.',
+        'compile.failedNotice': 'Compilation failed; see the errors below.',
+        'compile.success': 'Compilation succeeded.',
+        'compile.failure': 'Compilation failed.',
+        'compile.pdfWritten': ' The PDF was written to the workspace. Use "Open PDF" or the sidebar "Files" tab to view it.',
+        'server.loggedInAs': 'Signed in: {email}',
+        'server.loggedIn': 'Signed in',
+        'server.changeCookie': 'Change cookie',
+        'server.logout': 'Sign out',
+        'server.loginTitle': 'Sign in to Overleaf',
+        'server.loginHelp': 'Open Overleaf in a browser and sign in → F12 DevTools → Network → refresh → choose any request and copy the entire Cookie request header into the field below. The cookie is stored only on this machine.',
+        'server.address': 'Server URL',
+        'server.cookiePlaceholder': 'overleaf_session2=s%3A… (use sharelatex.sid=… for self-hosted instances)',
+        'server.verifying': 'Verifying…',
+        'server.verifyAndSignIn': 'Verify and sign in',
+        'notices.login': 'Signed in as {who}.',
+        'notices.logout': 'Signed out. Opened workspace files remain on this machine.',
+        'notices.workspaceOpened': 'Opened local workspace {name}.',
+        'notices.sessionOpened': 'Opened session: {name}',
+        'notices.newSession': 'Started a new session in {name}; earlier sessions remain in the project list.',
+        'notices.workspaceDeleted': 'Deleted the local workspace for {name}. You can recreate it from the Overleaf project list below.',
+        'confirm.deleteWorkspace': 'Delete the local workspace "{name}"?\n\nLocal workspace files and session bindings will be deleted. The Overleaf project in the cloud will not be affected.',
+        'errors.workspaceNotReadyReopen': 'The workspace is not ready. Open this project again.',
+        'errors.workspaceNotReadyLater': 'The workspace is not ready. Try again shortly.',
+        'errors.workspaceNoSession': 'The workspace has no available session yet.',
+        'panel.loading': 'Loading Overleaf projects…',
+        'panel.projectsTitle': 'Overleaf projects',
+        'panel.searchProjects': 'Search Overleaf projects',
+        'panel.noProjects': 'No projects available. Sign in above, or check that the account has projects.',
+        'panel.noProjectMatches': 'No matching Overleaf projects.',
+        'panel.openLocalWorkspace': 'Open local workspace',
+        'panel.createLocalWorkspace': 'Create local workspace',
+        'panel.localWorkspacesTitle': 'Local workspaces',
+        'panel.searchWorkspaces': 'Search local workspaces',
+        'panel.noWorkspaces': 'No local workspaces yet. Create one from an Overleaf project below.',
+        'panel.noWorkspaceMatches': 'No matching local workspaces.',
+        'panel.openWorkspace': 'Open workspace',
+        'panel.newSession': 'New session',
+        'panel.delete': 'Delete',
+        'panel.openConversations': 'Expand conversations for {name}',
+        'panel.closeConversations': 'Collapse conversations for {name}',
+        'panel.loggedInInfo': 'Signed-in accounts',
+        'session.new': 'New session',
+        'session.untitled': 'Untitled session',
+        'sidebar.projectAria': 'Overleaf projects',
+        'sidebar.expand': 'Expand Overleaf',
+        'sidebar.collapse': 'Collapse Overleaf',
+        'sidebar.manage': 'Manage Overleaf workspaces and accounts',
+        'sidebar.createFromProject': 'Create a local workspace from an existing project',
+        'sidebar.treeAria': 'Overleaf workspaces and sessions',
+        'sidebar.empty': 'No Overleaf projects yet.',
+        'sidebar.loginAndOpen': 'Sign in and open a project in the panel',
+        'sidebar.expandWorkspace': 'Expand sessions for {name}',
+        'sidebar.collapseWorkspace': 'Collapse sessions for {name}',
+        'sidebar.more': 'More actions for {name}',
+        'sidebar.newSessionFor': 'New session in {name}',
+        'sidebar.sessionActions': 'Session actions for {name}',
+        'sidebar.sessionMenuUnavailable': 'The Harness session menu service is not ready yet.',
+        'sidebar.workspaceMenuUnavailable': 'The Harness workspace menu is not ready yet.',
+        'sidebar.connectionError': 'Connection error',
+        'sidebar.conflicts': '{count} startup conflicts were found. Local drafts were kept and the cloud versions were loaded.',
+        'menu.disconnectSync': 'Disconnect sync',
+        'menu.reconnect': 'Reconnect',
+        'menu.newSession': 'New session',
+        'menu.resumePush': 'Resume auto-push',
+        'menu.pausePush': 'Pause auto-push',
+        'menu.flush': 'Sync local changes now',
+        'menu.openInOverleaf': 'Open in Overleaf',
+        'menu.manage': 'Manage workspaces and accounts',
+        'dialog.deleteSession': 'Delete session?',
+        'dialog.deleteSessionDescription': 'The session will be archived and removed from the Overleaf list. Harness history and paper files will be kept.',
+        'dialog.deleteSessionConfirm': 'Delete session',
+        'dialog.stopSessionFirst': 'Stop this session before deleting it.',
+        'dialog.sessionArchivedRemovalFailed': 'Session archived, but removal did not finish: ',
+        'menu.deleteSession': 'Delete session',
+        'setup.sourceTab': 'Could not register the source tab',
+        'setup.sidebarUnavailable': 'The right sidebar service is unavailable',
+        'setup.missingInject': 'The client context has no inject()',
+        'setup.error': '{stage}: {detail}',
+      },
+      zh: {
+        'common.cancel': '取消',
+        'common.refresh': '刷新',
+        'common.collapse': '收起',
+        'common.discard': '丢弃',
+        'common.create': '创建',
+        'common.creating': '创建中…',
+        'common.opening': '打开中…',
+        'common.deleting': '删除中…',
+        'common.previous': '上一页',
+        'common.next': '下一页',
+        'common.justNow': '刚刚',
+        'common.minutesAgo': '{count} 分钟前',
+        'common.hoursAgo': '{count} 小时前',
+        'files.project': '项目文件',
+        'files.newFile': '新建文件',
+        'files.newFolder': '新建文件夹',
+        'files.exampleFolder': '例如 figures',
+        'files.exampleFile': '例如 intro.tex',
+        'files.invalidName': '请输入文件名或目录名，例如 intro.tex。',
+        'files.readerUnavailable': 'DSH 文件读取服务尚未就绪。',
+        'files.createHereFile': '在此处新建文件',
+        'files.createHereFolder': '在此处新建文件夹',
+        'editor.loading': '正在加载编辑器…',
+        'editor.collapse': '收起编辑器',
+        'editor.noFile': '未选择文件',
+        'editor.unsaved': '未保存',
+        'editor.compile': '编译',
+        'editor.compiling': '编译中…',
+        'editor.outline': '大纲',
+        'editor.hideOutline': '隐藏大纲',
+        'source.invalidAddress': '无法解析这个文件地址。',
+        'source.reopen': '无法解析这个文件地址。请从工作区的文件树重新打开。',
+        'pdf.preview': 'PDF 预览',
+        'pdf.open': '打开 PDF',
+        'pdf.hide': '收起 PDF',
+        'pdf.split': '分屏 PDF',
+        'pdf.collapseTitle': '收起 PDF，保留源码编辑器',
+        'pdf.loadFailed': 'PDF 加载失败，请重试。',
+        'pdf.loading': '正在加载 PDF…',
+        'pdf.unavailable': 'DSH PDF 预览组件尚未就绪。',
+        'save.pushFailed': '已保存到本地，但推送到 Overleaf 失败：{error}',
+        'save.pushed': '已保存并推送到 Overleaf。',
+        'save.local': '已保存到本地；实时同步未连接。',
+        'save.settled': '已保存到本地（内容与 Overleaf 一致）。',
+        'save.pending': '已保存到本地，推送仍在进行…',
+        'save.pushUnavailable': '已保存到本地；推送不可用：{error}',
+        'sync.conflict': '远端改动有冲突，已保留本地文本。',
+        'draft.foundRecovered': '发现未恢复的本地草稿（可能来自上次异常退出）。',
+        'draft.found': '发现未恢复的本地草稿。',
+        'draft.recover': '恢复草稿',
+        'draft.restored': '已恢复本地草稿，保存后会重新推送到 Overleaf。',
+        'outline.title': '章节大纲',
+        'outline.itemOne': '{count} 项',
+        'outline.itemMany': '{count} 项',
+        'outline.empty': '当前文件还没有章节命令。',
+        'outline.unnamed': '(未命名章节)',
+        'outline.lineTitle': '{kind} · 第 {line} 行',
+        'compile.successToast': '编译成功，PDF 已更新。',
+        'compile.failedNotice': '编译失败，见下方错误。',
+        'compile.success': '编译成功。',
+        'compile.failure': '编译失败。',
+        'compile.pdfWritten': ' PDF 已写入工作区，可用「打开 PDF」或侧边栏「文件」查看。',
+        'server.loggedInAs': '已登录：{email}',
+        'server.loggedIn': '已登录',
+        'server.changeCookie': '更换 Cookie',
+        'server.logout': '退出登录',
+        'server.loginTitle': '登录 Overleaf',
+        'server.loginHelp': '在浏览器中打开 Overleaf 并登录 → F12 开发者工具 → 网络（Network）→ 刷新 → 任选请求，复制请求头里整行 Cookie 粘贴到下面。Cookie 只保存在本机。',
+        'server.address': '服务器地址',
+        'server.cookiePlaceholder': 'overleaf_session2=s%3A…（自建版本是 sharelatex.sid=…）',
+        'server.verifying': '验证中…',
+        'server.verifyAndSignIn': '验证并登录',
+        'notices.login': '已登录 {who}。',
+        'notices.logout': '已退出登录；已打开的工作区文件保留在本机。',
+        'notices.workspaceOpened': '已打开本地工作区 {name}。',
+        'notices.sessionOpened': '已打开会话：{name}',
+        'notices.newSession': '已在 {name} 中开始新会话；旧会话保留在项目列表里。',
+        'notices.workspaceDeleted': '已删除 {name} 的本地工作区。它现在可以从下方 Overleaf 项目重新创建。',
+        'confirm.deleteWorkspace': '删除“{name}”的本地工作区？\n\n本地工作区文件和会话绑定会被删除，Overleaf 云端项目不会受影响。',
+        'errors.workspaceNotReadyReopen': '工作区尚未就绪，请重新打开一次这个项目。',
+        'errors.workspaceNotReadyLater': '工作区尚未就绪，请稍后重试。',
+        'errors.workspaceNoSession': '工作区还没有可用的会话。',
+        'panel.loading': '正在加载 Overleaf 项目…',
+        'panel.projectsTitle': 'Overleaf 项目',
+        'panel.searchProjects': '搜索 Overleaf 项目',
+        'panel.noProjects': '没有可用项目。先在上方登录，或确认账号下有项目。',
+        'panel.noProjectMatches': '没有匹配的 Overleaf 项目。',
+        'panel.openLocalWorkspace': '打开本地工作区',
+        'panel.createLocalWorkspace': '创建本地工作区',
+        'panel.localWorkspacesTitle': '本地工作区',
+        'panel.searchWorkspaces': '搜索本地工作区',
+        'panel.noWorkspaces': '还没有本地工作区。先在下方选择已有 Overleaf 项目创建。',
+        'panel.noWorkspaceMatches': '没有匹配的本地工作区。',
+        'panel.openWorkspace': '打开工作区',
+        'panel.newSession': '新建会话',
+        'panel.delete': '删除',
+        'panel.openConversations': '展开 {name} 的对话',
+        'panel.closeConversations': '收起 {name} 的对话',
+        'panel.loggedInInfo': '已登录信息',
+        'session.new': '新会话',
+        'session.untitled': '未命名会话',
+        'sidebar.projectAria': 'Overleaf 项目',
+        'sidebar.expand': '展开 Overleaf',
+        'sidebar.collapse': '折叠 Overleaf',
+        'sidebar.manage': '管理 Overleaf 工作区与账号',
+        'sidebar.createFromProject': '从已有项目创建本地工作区',
+        'sidebar.treeAria': 'Overleaf 工作区与会话',
+        'sidebar.empty': '还没有 Overleaf 项目。',
+        'sidebar.loginAndOpen': '在面板中登录并打开项目',
+        'sidebar.expandWorkspace': '展开 {name} 的会话',
+        'sidebar.collapseWorkspace': '折叠 {name} 的会话',
+        'sidebar.more': '更多操作：{name}',
+        'sidebar.newSessionFor': '新建会话：{name}',
+        'sidebar.sessionActions': '会话操作：{name}',
+        'sidebar.sessionMenuUnavailable': 'Harness 会话菜单服务尚未就绪。',
+        'sidebar.workspaceMenuUnavailable': 'Harness 工作区菜单尚未就绪。',
+        'sidebar.connectionError': '连接出错',
+        'sidebar.conflicts': '{count} 个启动冲突已保留本地草稿，云端版本已载入。',
+        'menu.disconnectSync': '断开同步',
+        'menu.reconnect': '重新连接',
+        'menu.newSession': '新建会话',
+        'menu.resumePush': '恢复自动推送',
+        'menu.pausePush': '暂停自动推送',
+        'menu.flush': '立即同步本地改动',
+        'menu.openInOverleaf': '在 Overleaf 中打开',
+        'menu.manage': '管理工作区与账号',
+        'dialog.deleteSession': '删除会话？',
+        'dialog.deleteSessionDescription': '会话将归档并从 Overleaf 列表移除。Harness 历史日志和论文文件都会保留。',
+        'dialog.deleteSessionConfirm': '删除会话',
+        'dialog.stopSessionFirst': '请先停止此会话，再删除。',
+        'dialog.sessionArchivedRemovalFailed': '会话已归档，但移除未完成：',
+        'menu.deleteSession': '删除会话',
+        'setup.sourceTab': '右侧栏标签页注册失败',
+        'setup.sidebarUnavailable': '右侧栏服务不可用',
+        'setup.missingInject': '客户端上下文缺少 inject()',
+        'setup.error': '{stage}：{detail}',
+      },
+    };
+    let localeRuntime;
+
+    function interpolateCopy(template, params) {
+      if (params === undefined) return template;
+      return template.replace(/\{(\w+)\}/g, (match, name) =>
+        Object.prototype.hasOwnProperty.call(params, name) ? String(params[name]) : match);
+    }
+
+    function translateFor(locale, key, params) {
+      const dictionary = UI_COPY[locale] ?? UI_COPY.en;
+      return interpolateCopy(dictionary[key] ?? UI_COPY.en[key] ?? key, params);
+    }
+
+    function baselineLocale(locale) {
+      return typeof locale === 'string' && locale.toLowerCase().startsWith('zh') ? 'zh' : 'en';
+    }
+
+    function tr(key, params) {
+      const active = localeRuntime?.getSnapshot?.().active;
+      const locale = baselineLocale(active);
+      // The plugin only owns zh/en. An unsupported Host language must fall
+      // straight back to English instead of inheriting whatever text the
+      // Host happens to return for an unregistered locale.
+      const supported = typeof active !== 'string' || /^(?:zh|en)/iu.test(active);
+      if (supported) {
+        try {
+          const bound = localeRuntime?.bind?.(LOCALE_NS);
+          if (typeof bound === 'function') {
+            const text = bound(key, params);
+            if (typeof text === 'string' && text !== '' && text !== key) return text;
+          }
+        } catch { /* Fall back to the bundled dictionary. */ }
+      }
+      return translateFor(supported ? locale : 'en', key, params);
+    }
+
+    function useActiveLocale() {
+      return useSyncExternalStore(
+        useCallback((listener) => localeRuntime?.subscribe?.(listener) ?? (() => {}), []),
+        () => localeRuntime?.getSnapshot?.().active ?? 'en',
+        () => 'en',
+      );
+    }
+
+    function localizeComponent(Component) {
+      function LocalizedComponent(props) {
+        useActiveLocale();
+        return h(Component, props);
+      }
+      LocalizedComponent.displayName = `Localized(${Component.displayName ?? Component.name ?? 'OverleafComponent'})`;
+      return LocalizedComponent;
+    }
+
     const removedWorkspaceSessions = new Map();
 
     const CSS = `
@@ -172,7 +504,7 @@ window.__ModuleLoader__.load({
     /** Compact the host file tree only while it is an Overleaf workspace column. */
     const FILE_TREE_CSS = `
       .dsh-ol-flipped [data-files-root]>div:first-child{min-height:40px;box-sizing:border-box;padding:0 8px 0 12px;gap:4px;border-bottom:1px solid color-mix(in srgb,currentColor 9%,transparent)}
-      .dsh-ol-flipped [data-files-root]>div:first-child::before{content:'项目文件';flex:1;min-width:0;color:var(--dsw-alias-label-primary,CanvasText);font-size:12px;font-weight:600;line-height:28px}
+      .dsh-ol-flipped [data-files-root]>div:first-child::before{content:attr(data-dsh-ol-files-label);flex:1;min-width:0;color:var(--dsw-alias-label-primary,CanvasText);font-size:12px;font-weight:600;line-height:28px}
       .dsh-ol-flipped [data-files-root]>div:first-child>[data-path-label]{display:none}
       .dsh-ol-flipped [data-files-root]>div:first-child button[data-files-reload]{flex:none;width:28px;height:28px;padding:6px;border-radius:6px;color:var(--dsw-alias-label-secondary,GrayText)}
       .dsh-ol-flipped [data-files-root]>div:first-child button[data-files-reload]:hover{background:var(--dsw-alias-interactive-bg-hover,color-mix(in srgb,currentColor 8%,transparent));color:var(--dsw-alias-label-primary,CanvasText)}
@@ -306,6 +638,7 @@ window.__ModuleLoader__.load({
         // The host can move the Files tree outside the flipped layout frame.
         // Mark the active tree itself so the decoration survives that move.
         root.setAttribute('data-dsh-overleaf-files', '');
+        root.setAttribute('data-dsh-ol-files-label', tr('files.project'));
         root.querySelectorAll('li[data-files-entry]').forEach((row) => {
           const button = row.querySelector('button');
           if (button === null) return;
@@ -406,9 +739,19 @@ window.__ModuleLoader__.load({
      * plugin's whole UI and leave nothing to read.
      */
     let setupError = '';
+    let setupErrorStage = '';
+    let setupErrorDetail = '';
     function noteSetupError(stage, error) {
-      setupError = `${stage}：${errorText(error)}`;
+      setupErrorStage = stage;
+      setupErrorDetail = errorText(error);
+      setupError = `${stage}：${setupErrorDetail}`;
       console.warn('[dsh-overleaf]', setupError, error);
+    }
+    function setupErrorText() {
+      return setupError === '' ? '' : tr('setup.error', {
+        stage: tr(setupErrorStage),
+        detail: setupErrorDetail,
+      });
     }
 
     /* ---------------------------------- Sidebar source tab ---------------------------------- */
@@ -765,18 +1108,18 @@ window.__ModuleLoader__.load({
       const pushedAt = status?.lastPushAt === undefined ? 0 : Date.parse(status.lastPushAt);
       const failedAt = status?.pushErrorAt === undefined ? 0 : Date.parse(status.pushErrorAt);
       if (status?.pushError && failedAt >= savedAt) {
-        return { kind: 'error', message: `已保存到本地，但推送到 Overleaf 失败：${status.pushError}` };
+        return { kind: 'error', message: tr('save.pushFailed', { error: status.pushError }) };
       }
       if (status?.lastPushPath === path && pushedAt >= savedAt) {
-        return { kind: 'pushed', message: '已保存并推送到 Overleaf。' };
+        return { kind: 'pushed', message: tr('save.pushed') };
       }
       if (status?.phase !== 'connected' || status?.paused) {
-        return { kind: 'local', message: '已保存到本地；实时同步未连接。' };
+        return { kind: 'local', message: tr('save.local') };
       }
       if ((status?.pending ?? 0) === 0 && (status?.inFlight ?? 0) === 0 && status?.flushing !== true) {
-        return { kind: 'settled', message: '已保存到本地（内容与 Overleaf 一致）。' };
+        return { kind: 'settled', message: tr('save.settled') };
       }
-      return { kind: 'pending', message: '已保存到本地，推送仍在进行…' };
+      return { kind: 'pending', message: tr('save.pending') };
     }
 
     /** The conversation keeps the width it has in the reference three-column layout. */
@@ -875,6 +1218,7 @@ window.__ModuleLoader__.load({
       const pendingLine = useRef(undefined);
       const callbacksRef = useRef({ onChange, onSave, getCompletions });
       const valueRef = useRef(value ?? '');
+      const activeLocale = useActiveLocale();
       callbacksRef.current = { onChange, onSave, getCompletions };
       valueRef.current = value ?? '';
       const [phase, setPhase] = useState('loading');
@@ -890,6 +1234,7 @@ window.__ModuleLoader__.load({
             onChange: (text) => callbacksRef.current.onChange?.(text),
             onSave: () => callbacksRef.current.onSave?.(),
             getCompletions: (cm) => callbacksRef.current.getCompletions?.(cm),
+            locale: baselineLocale(activeLocale),
           });
           handleRef.current = local;
           setPhase('ready');
@@ -917,6 +1262,11 @@ window.__ModuleLoader__.load({
         if (phase !== 'ready') return;
         handleRef.current?.setReadOnly(readOnly === true);
       }, [phase, readOnly]);
+
+      useLayoutEffect(() => {
+        if (phase !== 'ready') return;
+        handleRef.current?.setLocale(baselineLocale(activeLocale));
+      }, [phase, activeLocale]);
 
       useLayoutEffect(() => {
         if (phase !== 'ready') return;
@@ -1016,7 +1366,7 @@ window.__ModuleLoader__.load({
             onChange: (event) => callbacksRef.current.onChange?.(event.target.value),
           })
           : h('div', { ref: hostRef, className: 'dsh-ol-cm' }),
-        phase === 'loading' ? h('div', { className: 'dsh-ol-cm-loading' }, '正在加载编辑器…') : null);
+        phase === 'loading' ? h('div', { className: 'dsh-ol-cm-loading' }, tr('editor.loading')) : null);
     });
 
     function CreateIcon({ folder }) {
@@ -1091,7 +1441,7 @@ window.__ModuleLoader__.load({
         if (name.length === 0 || name.startsWith('/') || /^[A-Za-z]:\//u.test(name)
           || name.includes('\0') || name.split('/').some((part) => part === '' || part === '.' || part === '..')
           || name === '.overleaf' || name.startsWith('.overleaf/')) {
-          setError('请输入文件名或目录名，例如 intro.tex。');
+          setError(tr('files.invalidName'));
           return;
         }
         const path = targetDirectory.length === 0 ? name : `${targetDirectory}/${name}`;
@@ -1169,32 +1519,32 @@ window.__ModuleLoader__.load({
         ref: wrapperRef,
         className: 'dsh-ol-fa',
       },
-      h('button', { type: 'button', 'data-ol-action': 'file', title: '新建文件', 'aria-label': '新建文件' }, h(CreateIcon, { folder: false })),
-      h('button', { type: 'button', 'data-ol-action': 'folder', title: '新建文件夹', 'aria-label': '新建文件夹' }, h(CreateIcon, { folder: true })),
+      h('button', { type: 'button', 'data-ol-action': 'file', title: tr('files.newFile'), 'aria-label': tr('files.newFile') }, h(CreateIcon, { folder: false })),
+      h('button', { type: 'button', 'data-ol-action': 'folder', title: tr('files.newFolder'), 'aria-label': tr('files.newFolder') }, h(CreateIcon, { folder: true })),
       h('dialog', {
         ref: dialogRef,
         className: 'dsh-ol-fa-dialog',
       },
       h('form', { ref: formRef, method: 'dialog' },
-        h('div', { className: 'dsh-ol-fa-title' }, kind === 'folder' ? '新建文件夹' : '新建文件'),
+        h('div', { className: 'dsh-ol-fa-title' }, kind === 'folder' ? tr('files.newFolder') : tr('files.newFile')),
         h('div', { className: 'dsh-ol-fa-sub' }, targetDirectory === '' ? absolutePath : `${absolutePath}/${targetDirectory}`),
         h('input', {
           ref: inputRef,
           spellCheck: false,
-          placeholder: kind === 'folder' ? '例如 figures' : '例如 intro.tex',
+          placeholder: kind === 'folder' ? tr('files.exampleFolder') : tr('files.exampleFile'),
         }),
         error !== '' ? h('div', { className: 'dsh-ol-fa-error' }, error) : null,
         h('div', { className: 'dsh-ol-fa-actions' },
-          h('button', { type: 'button', 'data-ol-action': 'cancel' }, '取消'),
+          h('button', { type: 'button', 'data-ol-action': 'cancel' }, tr('common.cancel')),
           h('button', { type: 'button', 'data-ol-action': 'create', className: 'primary', disabled: busy },
-            busy ? '创建中…' : '创建')))));
+            busy ? tr('common.creating') : tr('common.create'))))));
     }
 
     /** Read only changed PDF bytes through the host's authorized file service. */
     function pdfReader(ctx) {
       return async (sessionId, signal, version) => {
         const files = ctx.get?.('remote.workspaceFiles') ?? ctx.get?.('remote')?.workspaceFiles;
-        if (files === undefined) throw new Error('DSH 文件读取服务尚未就绪。');
+        if (files === undefined) throw new Error(tr('files.readerUnavailable'));
         const metadata = await files.stat(sessionId, 'output.pdf', signal);
         if (!metadata.ok) throw new Error(metadata.error.message);
         if (version !== undefined && metadata.value.version === version) return undefined;
@@ -1234,20 +1584,20 @@ window.__ModuleLoader__.load({
         return () => { controller.abort(); clearInterval(timer); };
       }, [readPdf, sessionId, revision, visible, attempt]);
       const bindScrollport = useCallback((node) => { scrollport.current = node; }, []);
-      return h('section', { className: 'dsh-ol-inline-pdf', 'aria-label': 'PDF 预览' },
+      return h('section', { className: 'dsh-ol-inline-pdf', 'aria-label': tr('pdf.preview') },
         h('div', { className: 'dsh-ol-src-bar' }, h('span', null, 'output.pdf'),
           h('span', { className: 'dsh-ol-src-spacer' }),
-          h('button', { onClick: () => { version.current = undefined; setAttempt((value) => value + 1); } }, '刷新'),
-          h('button', { onClick: onClose, title: '收起 PDF，保留源码编辑器' }, '收起')),
+          h('button', { onClick: () => { version.current = undefined; setAttempt((value) => value + 1); } }, tr('common.refresh')),
+          h('button', { onClick: onClose, title: tr('pdf.collapseTitle') }, tr('common.collapse'))),
         error ? h('div', { className: 'dsh-ol-src-note error', role: 'alert' }, error) : null,
         h('div', { className: 'dsh-ol-inline-pdf-body' }, content === undefined
-          ? h('div', { className: 'dsh-ol-src-empty' }, error ? 'PDF 加载失败，请重试。' : '正在加载 PDF…')
+          ? h('div', { className: 'dsh-ol-src-empty' }, error ? tr('pdf.loadFailed') : tr('pdf.loading'))
           : renderSlot('overleaf.source.pdf', {
             resourceAddress: fileAddress(sessionId, 'output.pdf'), content, wrap: false,
             scrollportRef: bindScrollport,
           }, { entryKey: '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/pdf',
             hookContext: useTabInfo,
-            fallback: h('div', { className: 'dsh-ol-src-empty' }, 'DSH PDF 预览组件尚未就绪。'),
+            fallback: h('div', { className: 'dsh-ol-src-empty' }, tr('pdf.unavailable')),
           })));
     }
 
@@ -1335,7 +1685,7 @@ window.__ModuleLoader__.load({
       useEffect(() => { lineRef.current = tab.navigation?.params?.line; });
 
       const load = useCallback(async () => {
-        if (sessionId === undefined || path === undefined) { setError('无法解析这个文件地址。'); return; }
+        if (sessionId === undefined || path === undefined) { setError(tr('source.invalidAddress')); return; }
         setBusy('load');
         try {
           const result = await api('readFile', { ...where(), path });
@@ -1412,7 +1762,7 @@ window.__ModuleLoader__.load({
             }
             setDirty(nextText !== result.text);
             if (nextText !== result.text) setEditRevision((value) => value + 1);
-            setNotice(merged.conflict ? '远端改动有冲突，已保留本地文本。' : '');
+            setNotice(merged.conflict ? tr('sync.conflict') : '');
           } catch { /* the file may be mid-write; retry on the next batch */ }
         });
       }, [api, sessionId, path, tab.visible, localPath]);
@@ -1451,7 +1801,7 @@ window.__ModuleLoader__.load({
               mtimeMs: result.mtimeMs, dirty: true };
             setDirty(true);
           }
-          setNotice(result.conflict ? '远端改动有冲突，已保留本地文本。' : '');
+          setNotice(result.conflict ? tr('sync.conflict') : '');
           setError('');
           setPushWatch(undefined);
           // Push now instead of waiting for fs.watch's debounce, then report
@@ -1463,7 +1813,7 @@ window.__ModuleLoader__.load({
             if (outcome.kind === 'error') { setNotice(''); setError(outcome.message); }
             if (outcome.kind === 'pending') setPushWatch({ path, startedAt });
           } catch (e) {
-            setError(`已保存到本地；推送不可用：${errorText(e)}`);
+            setError(tr('save.pushUnavailable', { error: errorText(e) }));
           }
           return true;
         } catch (e) { setError(errorText(e)); return false; }
@@ -1536,7 +1886,7 @@ window.__ModuleLoader__.load({
         setDirty(true);
         setEditRevision((value) => value + 1);
         setRecovery(undefined);
-        setNotice('已恢复本地草稿，保存后会重新推送到 Overleaf。');
+        setNotice(tr('draft.restored'));
       };
       const discardDraft = () => {
         if (workspaceKey !== undefined && path !== undefined) clearDraft(workspaceKey, path);
@@ -1558,12 +1908,12 @@ window.__ModuleLoader__.load({
           const result = await api('compile', { ...where(), main_file: path });
           setCompile(result);
           if (result.status === 'success') {
-            showToast('编译成功，PDF 已更新。');
+            showToast(tr('compile.successToast'));
             if (typeof localPath === 'string') {
               rememberPrepared(localPath, { ...readPrepared(localPath), localDir: localPath, bound: true, hasPdf: true });
             }
             setHasPdf(true);
-          } else setNotice('编译失败，见下方错误。');
+          } else setNotice(tr('compile.failedNotice'));
           setError('');
         } catch (e) { setError(errorText(e)); }
         finally { setBusy(''); }
@@ -1573,7 +1923,7 @@ window.__ModuleLoader__.load({
 
       if (target === undefined) {
         return h('div', { className: 'dsh-ol-src' }, h('style', null, SOURCE_CSS + EDITOR_CSS),
-          h('div', { className: 'dsh-ol-src-empty' }, '无法解析这个文件地址。请从工作区的文件树重新打开。'));
+          h('div', { className: 'dsh-ol-src-empty' }, tr('source.reopen')));
       }
 
       const jump = (item) => {
@@ -1596,10 +1946,10 @@ window.__ModuleLoader__.load({
         h('div', { className: 'dsh-ol-src-bar' },
           h('span', { className: 'dsh-ol-src-name' }, basenameOf(path)),
           h('span', { className: 'dsh-ol-src-spacer' }),
-          h('button', { disabled: file === undefined, onClick: () => setOutlineOpen((value) => !value) }, outlineOpen ? '隐藏大纲' : '大纲'),
+          h('button', { disabled: file === undefined, onClick: () => setOutlineOpen((value) => !value) }, outlineOpen ? tr('editor.hideOutline') : tr('editor.outline')),
           h('button', { className: 'primary', disabled: busy !== '', onClick: () => { void compileNow(); } },
-            busy === 'compile' ? '编译中…' : '编译'),
-          hasPdf ? h('button', { 'aria-pressed': pdfOpen, onClick: openPdf }, pdfOpen ? '收起 PDF' : '分屏 PDF') : null,
+            busy === 'compile' ? tr('editor.compiling') : tr('editor.compile')),
+          hasPdf ? h('button', { 'aria-pressed': pdfOpen, onClick: openPdf }, pdfOpen ? tr('pdf.hide') : tr('pdf.split')) : null,
           toast !== undefined && error === '' ? h('div', {
             key: toast.key,
             className: 'dsh-ol-toast',
@@ -1625,15 +1975,15 @@ window.__ModuleLoader__.load({
         error !== '' ? h('div', { className: 'dsh-ol-src-note error' }, error) : null,
         notice !== '' && error === '' ? h('div', { className: 'dsh-ol-src-note ok' }, notice) : null,
         recovery !== undefined ? h('div', { className: 'dsh-ol-src-recovery' },
-          h('span', null, '发现未恢复的本地草稿（可能来自上次异常退出）。'),
-          h('button', { onClick: recoverDraft }, '恢复草稿'),
-          h('button', { onClick: discardDraft }, '丢弃')) : null,
+          h('span', null, tr('draft.foundRecovered')),
+          h('button', { onClick: recoverDraft }, tr('draft.recover')),
+          h('button', { onClick: discardDraft }, tr('common.discard'))) : null,
         outlineOpen ? h('div', { className: 'dsh-ol-src-outline' },
-          h('div', { className: 'dsh-ol-src-outline-head' }, h('span', null, '章节大纲'),
-            h('span', null, `${outline.length} 项`)),
-          outline.length === 0 ? h('div', { className: 'dsh-ol-src-empty' }, '当前文件还没有章节命令。')
+          h('div', { className: 'dsh-ol-src-outline-head' }, h('span', null, tr('outline.title')),
+            h('span', null, tr(outline.length === 1 ? 'outline.itemOne' : 'outline.itemMany', { count: outline.length }))),
+          outline.length === 0 ? h('div', { className: 'dsh-ol-src-empty' }, tr('outline.empty'))
             : outline.map((item) => h('button', { key: `${item.line}:${item.title}`, style: { paddingLeft: `${6 + item.level * 12}px` },
-              title: `${item.kind} · 第 ${item.line} 行`, onClick: () => editorRef.current?.revealLine(item.line) }, item.title || '(未命名章节)'))) : null,
+              title: tr('outline.lineTitle', { kind: item.kind, line: item.line }), onClick: () => editorRef.current?.revealLine(item.line) }, item.title || tr('outline.unnamed')))) : null,
         h('div', { className: `dsh-ol-source-workspace${narrow ? ' narrow' : ''}`, ref: workspaceRef,
           'data-pdf-open': hasPdf && pdfOpen },
         h('div', { className: 'dsh-ol-source-editor' }, h(CodeEditor, {
@@ -1699,31 +2049,32 @@ window.__ModuleLoader__.load({
           h('div', { className: 'dsh-ol-row-head' },
             h('div', null,
               h('div', { className: 'dsh-ol-title' }, origin),
-              h('div', { className: 'dsh-ol-sub' }, server.email.length > 0 ? `已登录：${server.email}` : '已登录')),
+              h('div', { className: 'dsh-ol-sub' }, server.email.length > 0
+                ? tr('server.loggedInAs', { email: server.email }) : tr('server.loggedIn'))),
             h('div', { className: 'dsh-ol-actions' },
-              h('button', { disabled: busy, onClick: () => setEditing(true) }, '更换 Cookie'),
-              h('button', { className: 'dsh-ol-danger', disabled: busy, onClick: () => onLogout(origin) }, '退出登录'))));
+              h('button', { disabled: busy, onClick: () => setEditing(true) }, tr('server.changeCookie')),
+              h('button', { className: 'dsh-ol-danger', disabled: busy, onClick: () => onLogout(origin) }, tr('server.logout')))));
       }
       return h('div', { className: 'dsh-ol-card' },
-        h('h2', null, '登录 Overleaf'),
+        h('h2', null, tr('server.loginTitle')),
         error ? h('p', { className: 'dsh-ol-error' }, error) : null,
         notice ? h('p', { className: 'dsh-ol-ok' }, notice) : null,
         h('p', { className: 'dsh-ol-muted', style: { marginBottom: 16 } },
-          '在浏览器中打开 Overleaf 并登录 → F12 开发者工具 → 网络（Network）→ 刷新 → 任选请求，复制请求头里整行 Cookie 粘贴到下面。Cookie 只保存在本机。'),
+          tr('server.loginHelp')),
         h('div', { className: 'dsh-ol-field' },
-          h('label', { htmlFor: 'dsh-ol-origin' }, '服务器地址'),
+          h('label', { htmlFor: 'dsh-ol-origin' }, tr('server.address')),
           h('input', { id: 'dsh-ol-origin', value: origin, placeholder: 'https://www.overleaf.com',
             onChange: (event) => setOrigin(event.target.value), spellCheck: false })),
         h('div', { className: 'dsh-ol-field' },
           h('label', { htmlFor: 'dsh-ol-cookie' }, 'Cookie'),
           h('textarea', { id: 'dsh-ol-cookie', value: cookie,
-            placeholder: 'overleaf_session2=s%3A…（自建版本是 sharelatex.sid=…）',
+            placeholder: tr('server.cookiePlaceholder'),
             onChange: (event) => setCookie(event.target.value), spellCheck: false, autoComplete: 'off' })),
         h('div', { className: 'dsh-ol-actions', style: { justifyContent: 'flex-end' } },
-          server !== undefined ? h('button', { disabled: busy, onClick: () => setEditing(false) }, '取消') : null,
+          server !== undefined ? h('button', { disabled: busy, onClick: () => setEditing(false) }, tr('common.cancel')) : null,
           h('button', { className: 'dsh-ol-primary', disabled: busy || cookie.trim().length === 0,
             onClick: () => onLogin({ base_url: origin.trim(), cookie: cookie.trim() }, () => setCookie('')) },
-            busy ? '验证中…' : '验证并登录')));
+            busy ? tr('server.verifying') : tr('server.verifyAndSignIn'))));
     }
 
     /** Render only the visible rows of a potentially very large project tree. */
@@ -1813,7 +2164,7 @@ window.__ModuleLoader__.load({
           setFile({ ...file, text: result.text, mtimeMs: result.mtimeMs });
           setDirty(false);
           clearDraft(workspace.localDir, file.path);
-          setNotice(result.conflict ? '远端改动有冲突，已保留本地文本。' : '');
+          setNotice(result.conflict ? tr('sync.conflict') : '');
           setError('');
           setPushWatch(undefined);
           try {
@@ -1822,7 +2173,7 @@ window.__ModuleLoader__.load({
             if (outcome.kind === 'error') { setNotice(''); setError(outcome.message); }
             if (outcome.kind === 'pending') setPushWatch({ path: file.path, startedAt });
           } catch (e) {
-            setError(`已保存到本地；推送不可用：${errorText(e)}`);
+            setError(tr('save.pushUnavailable', { error: errorText(e) }));
           }
           return true;
         } catch (e) { setError(errorText(e)); return false; } finally { setBusy(''); }
@@ -1872,7 +2223,7 @@ window.__ModuleLoader__.load({
         setDirty(true);
         setEditRevision((value) => value + 1);
         setRecovery(undefined);
-        setNotice('已恢复本地草稿，保存后会重新推送到 Overleaf。');
+        setNotice(tr('draft.restored'));
       };
       const discardDraft = () => {
         if (file !== undefined) clearDraft(workspace.localDir, file.path);
@@ -1891,7 +2242,7 @@ window.__ModuleLoader__.load({
           if (result.status === 'success') {
             rememberPrepared(workspace.localDir, { ...readPrepared(workspace.localDir), localDir: workspace.localDir, bound: true, hasPdf: true });
           }
-          setNotice(result.status === 'success' ? '编译成功，PDF 已更新。' : '编译失败，见下方错误。');
+          setNotice(result.status === 'success' ? tr('compile.successToast') : tr('compile.failedNotice'));
         } catch (e) { setError(errorText(e)); } finally { setBusy(''); }
       }, [api, workspace.localDir, dirty, save, file?.path]);
 
@@ -1900,18 +2251,18 @@ window.__ModuleLoader__.load({
           h('div', { className: 'dsh-ol-title' }, workspace.projectName),
           h('div', { className: 'dsh-ol-sub' }, workspace.localDir)),
         h('div', { className: 'dsh-ol-actions' },
-          h('button', { disabled: busy !== '', onClick: openPdf }, '打开 PDF'),
-          h('button', { disabled: busy !== '', onClick: onClose }, '收起编辑器')));
+          h('button', { disabled: busy !== '', onClick: openPdf }, tr('pdf.open')),
+          h('button', { disabled: busy !== '', onClick: onClose }, tr('editor.collapse'))));
 
       const fileList = h(VirtualFileList, { entries, file, busy, onOpen: openFile });
 
       const codeBar = h('div', { className: 'dsh-ol-codebar' },
-        h('span', { className: 'dsh-ol-code-name' }, file?.path ?? '未选择文件'),
+        h('span', { className: 'dsh-ol-code-name' }, file?.path ?? tr('editor.noFile')),
         h('span', { className: 'dsh-ol-actions' },
-          dirty ? h('span', { className: 'dsh-ol-dirty' }, '未保存') : null,
-          h('button', { disabled: file === undefined, onClick: () => setOutlineOpen((value) => !value) }, outlineOpen ? '隐藏大纲' : '大纲'),
+          dirty ? h('span', { className: 'dsh-ol-dirty' }, tr('editor.unsaved')) : null,
+          h('button', { disabled: file === undefined, onClick: () => setOutlineOpen((value) => !value) }, outlineOpen ? tr('editor.hideOutline') : tr('editor.outline')),
           h('button', { className: 'dsh-ol-primary', disabled: busy !== '', onClick: () => { void compileNow(); } },
-            busy === 'compile' ? '编译中…' : '编译')));
+            busy === 'compile' ? tr('editor.compiling') : tr('editor.compile'))));
 
       const codeArea = h(CodeEditor, {
         ref: editorRef,
@@ -1939,22 +2290,23 @@ window.__ModuleLoader__.load({
 
       const compilePanel = compile === undefined ? null : h('div', null,
         h('p', { className: compile.status === 'success' ? 'dsh-ol-ok' : 'dsh-ol-error' },
-          compile.status === 'success' ? '编译成功。' : '编译失败。',
-          compile.pdfPath ? ' PDF 已写入工作区，可用「打开 PDF」或侧边栏「文件」查看。' : ''),
+          compile.status === 'success' ? tr('compile.success') : tr('compile.failure'),
+          compile.pdfPath ? tr('compile.pdfWritten') : ''),
         errorList);
 
       return h('div', { className: 'dsh-ol-card' }, h('style', null, EDITOR_CSS), header,
         error ? h('p', { className: 'dsh-ol-error' }, error) : null,
         notice ? h('p', { className: 'dsh-ol-ok' }, notice) : null,
         recovery !== undefined ? h('div', { className: 'dsh-ol-src-recovery' },
-          h('span', null, '发现未恢复的本地草稿。'), h('button', { onClick: recoverDraft }, '恢复草稿'),
-          h('button', { onClick: discardDraft }, '丢弃')) : null,
+          h('span', null, tr('draft.found')), h('button', { onClick: recoverDraft }, tr('draft.recover')),
+          h('button', { onClick: discardDraft }, tr('common.discard'))) : null,
         outlineOpen ? h('div', { className: 'dsh-ol-src-outline' },
-          h('div', { className: 'dsh-ol-src-outline-head' }, h('span', null, '章节大纲'),
-            h('span', null, `${sourceOutline(file?.text ?? '').length} 项`)),
+          h('div', { className: 'dsh-ol-src-outline-head' }, h('span', null, tr('outline.title')),
+            h('span', null, tr(sourceOutline(file?.text ?? '').length === 1 ? 'outline.itemOne' : 'outline.itemMany',
+              { count: sourceOutline(file?.text ?? '').length }))),
           sourceOutline(file?.text ?? '').map((item) => h('button', { key: `${item.line}:${item.title}`,
             style: { paddingLeft: `${6 + item.level * 12}px` }, onClick: () => editorRef.current?.revealLine(item.line) },
-          item.title || '(未命名章节)'))) : null,
+          item.title || tr('outline.unnamed')))) : null,
         h('div', { className: 'dsh-ol-editor' }, fileList,
           h('div', { className: 'dsh-ol-code-wrap' }, codeBar, codeArea)),
         compilePanel);
@@ -2011,17 +2363,17 @@ window.__ModuleLoader__.load({
       const onLogin = (request, done) => run('login', async () => {
         const result = await api('login', request);
         done?.();
-        setNotice(`已登录 ${result.email || result.origin}。`);
+        setNotice(tr('notices.login', { who: result.email || result.origin }));
       });
       const onLogout = (origin) => run(`logout:${origin}`, async () => {
         await api('logout', { base_url: origin });
-        setNotice('已退出登录；已打开的工作区文件保留在本机。');
+        setNotice(tr('notices.logout'));
       });
       const onOpen = (project) => run(`open:${project.id}`, async () => {
         const primary = data?.primary ?? 'https://www.overleaf.com';
         const existing = data.workspaces.find((item) => item.server === primary && item.projectId === project.id);
         const result = await api('open', { base_url: primary, project_id: project.id, project_name: project.name });
-        setNotice(`已打开本地工作区 ${project.name}。`);
+        setNotice(tr('notices.workspaceOpened', { name: project.name }));
         if (result.workspaceId !== null && result.workspaceId !== undefined) {
           await enterWorkspace(result.workspaceId, result.localDir);
         }
@@ -2033,7 +2385,7 @@ window.__ModuleLoader__.load({
         try {
           const item = workspaceItemOf(ctx, workspace.localDir);
           if (item === undefined) {
-            setError('工作区尚未就绪，请重新打开一次这个项目。');
+            setError(tr('errors.workspaceNotReadyReopen'));
             return;
           }
           pdfVisibilityStore(workspace.localDir).set(true);
@@ -2044,27 +2396,27 @@ window.__ModuleLoader__.load({
       /** Resume one conversation from the project's history. */
       const openSession = (workspace, session) => run(`session:${session.id}`, async () => {
         const item = workspaceItemOf(ctx, workspace.localDir);
-        if (item === undefined) throw new Error('工作区尚未就绪，请重新打开一次这个项目。');
+        if (item === undefined) throw new Error(tr('errors.workspaceNotReadyReopen'));
         await enterWorkspace(item.workspaceId, workspace.localDir, { sessionId: session.id });
-        setNotice(`已打开会话：${sessionLabel(session)}`);
+        setNotice(tr('notices.sessionOpened', { name: sessionLabel(session) }));
       });
 
       /** Start a fresh blank conversation in the project, keeping the old ones. */
       const newSession = (workspace) => run(`new:${workspace.localDir}`, async () => {
         await openRecord(workspace, { fresh: true });
-        setNotice(`已在 ${workspace.projectName} 中开始新会话；旧会话保留在项目列表里。`);
+        setNotice(tr('notices.newSession', { name: workspace.projectName }));
       });
 
       /** Release the socket and filesystem watcher for one project. */
       const clearCache = (workspace) => run(`delete:${workspace.localDir}`, async () => {
-        if (!window.confirm(`删除“${workspace.projectName}”的本地工作区？\n\n本地工作区文件和会话绑定会被删除，Overleaf 云端项目不会受影响。`)) return;
+        if (!window.confirm(tr('confirm.deleteWorkspace', { name: workspace.projectName }))) return;
         await api('clearCache', { local_path: workspace.localDir });
-        setNotice(`已删除 ${workspace.projectName} 的本地工作区。它现在可以从下方 Overleaf 项目重新创建。`);
+        setNotice(tr('notices.workspaceDeleted', { name: workspace.projectName }));
       });
 
       if (data === undefined) {
         return h('div', { className: 'dsh-ol-page' }, h('style', null, CSS),
-          h('div', { className: 'dsh-ol-inner' }, h('p', { className: 'dsh-ol-muted' }, '正在加载 Overleaf 项目…')));
+          h('div', { className: 'dsh-ol-inner' }, h('p', { className: 'dsh-ol-muted' }, tr('panel.loading'))));
       }
 
       const primary = data.servers.find(entry => entry.origin === data.primary);
@@ -2083,12 +2435,12 @@ window.__ModuleLoader__.load({
         (safeProjectPage + 1) * PROJECTS_PER_PAGE,
       );
       const projectCard = h('div', { className: 'dsh-ol-card' },
-        h('h2', null, 'Overleaf 项目'),
+        h('h2', null, tr('panel.projectsTitle')),
         openError ? h('p', { className: 'dsh-ol-error' }, openError) : null,
-        h('input', { placeholder: '搜索 Overleaf 项目', value: projectQuery,
-          onChange: (event) => setProjectQuery(event.target.value), 'aria-label': '搜索 Overleaf 项目' }),
+        h('input', { placeholder: tr('panel.searchProjects'), value: projectQuery,
+          onChange: (event) => setProjectQuery(event.target.value), 'aria-label': tr('panel.searchProjects') }),
         filteredProjects.length === 0
-          ? h('div', { className: 'dsh-ol-empty' }, normalizedProjectQuery === '' ? '没有可用项目。先在上方登录，或确认账号下有项目。' : '没有匹配的 Overleaf 项目。')
+          ? h('div', { className: 'dsh-ol-empty' }, normalizedProjectQuery === '' ? tr('panel.noProjects') : tr('panel.noProjectMatches'))
           : h('div', { className: 'dsh-ol-rows' }, visibleProjects.map((project) =>
             h('div', { className: 'dsh-ol-row', key: project.id },
               h('div', { className: 'dsh-ol-row-head' },
@@ -2097,13 +2449,13 @@ window.__ModuleLoader__.load({
                 h('div', { className: 'dsh-ol-actions' },
                   h('button', { className: 'dsh-ol-primary', disabled: busy !== '',
                     onClick: () => { void onOpen(project); } },
-                  busy === `open:${project.id}` ? '打开中…'
+                  busy === `open:${project.id}` ? tr('common.opening')
                     : data.workspaces.some((item) => item.server === data.primary && item.projectId === project.id)
-                      ? '打开本地工作区' : '创建本地工作区')))))),
+                      ? tr('panel.openLocalWorkspace') : tr('panel.createLocalWorkspace'))))))),
         projectCount > PROJECTS_PER_PAGE ? h('div', { className: 'dsh-ol-actions', style: { justifyContent: 'center', marginTop: 16 } },
-          h('button', { disabled: safeProjectPage === 0, onClick: () => setProjectPage((page) => Math.max(0, page - 1)) }, '上一页'),
+          h('button', { disabled: safeProjectPage === 0, onClick: () => setProjectPage((page) => Math.max(0, page - 1)) }, tr('common.previous')),
           h('span', { className: 'dsh-ol-muted' }, `${safeProjectPage + 1} / ${projectPages}`),
-          h('button', { disabled: safeProjectPage >= projectPages - 1, onClick: () => setProjectPage((page) => Math.min(projectPages - 1, page + 1)) }, '下一页')) : null);
+          h('button', { disabled: safeProjectPage >= projectPages - 1, onClick: () => setProjectPage((page) => Math.min(projectPages - 1, page + 1)) }, tr('common.next'))) : null);
 
       const normalizedWorkspaceQuery = workspaceQuery.trim().toLocaleLowerCase();
       const filteredWorkspaces = normalizedWorkspaceQuery === '' ? data.workspaces : data.workspaces.filter((workspace) =>
@@ -2116,11 +2468,11 @@ window.__ModuleLoader__.load({
         (safeWorkspacePage + 1) * WORKSPACES_PER_PAGE,
       );
       const workspaceCard = h('div', { className: 'dsh-ol-card' },
-        h('h2', null, '本地工作区'),
-        h('input', { placeholder: '搜索本地工作区', value: workspaceQuery,
-          onChange: (event) => setWorkspaceQuery(event.target.value), 'aria-label': '搜索本地工作区' }),
+        h('h2', null, tr('panel.localWorkspacesTitle')),
+        h('input', { placeholder: tr('panel.searchWorkspaces'), value: workspaceQuery,
+          onChange: (event) => setWorkspaceQuery(event.target.value), 'aria-label': tr('panel.searchWorkspaces') }),
         filteredWorkspaces.length === 0
-          ? h('div', { className: 'dsh-ol-empty' }, normalizedWorkspaceQuery === '' ? '还没有本地工作区。先在下方选择已有 Overleaf 项目创建。' : '没有匹配的本地工作区。')
+          ? h('div', { className: 'dsh-ol-empty' }, normalizedWorkspaceQuery === '' ? tr('panel.noWorkspaces') : tr('panel.noWorkspaceMatches'))
           : h('div', { className: 'dsh-ol-rows' }, visibleWorkspaces.map((workspace) => {
             const sessions = sessionsOfWorkspace(ctx, workspace.localDir);
             const current = ctx.uiWorkspace?.selection?.getSnapshot?.().sessionId;
@@ -2130,7 +2482,8 @@ window.__ModuleLoader__.load({
               h('div', { className: 'dsh-ol-row-head' },
                 h('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
                   h('button', { className: 'dsh-ol-workspace-toggle',
-                    'aria-label': `${collapsed ? '展开' : '收起'} ${workspace.projectName} 的对话`,
+                    'aria-label': tr(collapsed ? 'panel.openConversations' : 'panel.closeConversations',
+                      { name: workspace.projectName }),
                     'aria-expanded': String(!collapsed),
                     style: { minHeight: 28, minWidth: 28, padding: '2px 6px', border: 0, fontSize: 16 },
                     onClick: () => setCollapsedWorkspaces((current) => ({ ...current, [workspace.localDir]: !collapsed })) },
@@ -2140,13 +2493,13 @@ window.__ModuleLoader__.load({
                 h('div', { className: 'dsh-ol-actions' },
                   h('button', { className: 'dsh-ol-primary', disabled: busy !== '' || !workspace.bound,
                     onClick: () => { void run(`enter:${workspace.localDir}`, () => openRecord(workspace)); } },
-                  openingLast ? '打开中…' : '打开工作区'),
+                  openingLast ? tr('common.opening') : tr('panel.openWorkspace')),
                   h('button', { disabled: busy !== '' || !workspace.bound,
                     onClick: () => { void newSession(workspace); } },
-                  busy === `new:${workspace.localDir}` ? '创建中…' : '新建会话'),
+                  busy === `new:${workspace.localDir}` ? tr('common.creating') : tr('panel.newSession')),
                   h('button', { className: 'dsh-ol-danger', disabled: busy !== '' || !workspace.bound,
                     onClick: () => { void clearCache(workspace); } },
-                  busy === `delete:${workspace.localDir}` ? '删除中…' : '删除'))),
+                  busy === `delete:${workspace.localDir}` ? tr('common.deleting') : tr('panel.delete')))),
               !collapsed ? h('div', { className: 'dsh-ol-sessions' },
                 sessions.length === 0
                   ? null
@@ -2160,9 +2513,9 @@ window.__ModuleLoader__.load({
                   h('span', { className: 'dsh-ol-session-time' }, sessionTime(session.updatedAt))))) : null);
           })),
         workspaceCount > WORKSPACES_PER_PAGE ? h('div', { className: 'dsh-ol-actions', style: { justifyContent: 'center', marginTop: 16 } },
-          h('button', { disabled: safeWorkspacePage === 0, onClick: () => setWorkspacePage((page) => Math.max(0, page - 1)) }, '上一页'),
+          h('button', { disabled: safeWorkspacePage === 0, onClick: () => setWorkspacePage((page) => Math.max(0, page - 1)) }, tr('common.previous')),
           h('span', { className: 'dsh-ol-muted' }, `${safeWorkspacePage + 1} / ${workspacePages}`),
-          h('button', { disabled: safeWorkspacePage >= workspacePages - 1, onClick: () => setWorkspacePage((page) => Math.min(workspacePages - 1, page + 1)) }, '下一页')) : null);
+          h('button', { disabled: safeWorkspacePage >= workspacePages - 1, onClick: () => setWorkspacePage((page) => Math.min(workspacePages - 1, page + 1)) }, tr('common.next'))) : null);
 
       return h('div', { className: 'dsh-ol-page' }, h('style', null, CSS),
         h('div', { className: 'dsh-ol-inner' },
@@ -2170,9 +2523,9 @@ window.__ModuleLoader__.load({
             h('div', null, h('h1', null, 'Overleaf Workshop')))),
         h('div', { className: 'dsh-ol-inner' },
           error ? h('p', { className: 'dsh-ol-error' }, error) : null,
-          setupError !== '' ? h('p', { className: 'dsh-ol-error' }, setupError) : null,
+          setupError !== '' ? h('p', { className: 'dsh-ol-error' }, setupErrorText()) : null,
           h('div', { className: 'dsh-ol-card' },
-            h('h2', null, '已登录信息'),
+            h('h2', null, tr('panel.loggedInInfo')),
             data.servers.length === 0
               ? h(ServerCard, { server: undefined, primary: data.primary, onLogin, onLogout,
                 busy: busy.startsWith('login') || busy.startsWith('logout'), notice, error: loginError })
@@ -2251,11 +2604,11 @@ window.__ModuleLoader__.load({
 
     /** Human label for a Session summary. */
     function sessionLabel(session) {
-      if (session.blank === true) return '新会话';
+      if (session.blank === true) return tr('session.new');
       const title = typeof session.title === 'string' ? session.title.trim() : '';
       if (title.length > 0) return title;
       const displayed = typeof session.displayTitle === 'string' ? session.displayTitle.trim() : '';
-      return displayed.length > 0 ? displayed : '未命名会话';
+      return displayed.length > 0 ? displayed : tr('session.untitled');
     }
 
     /** Short relative time for a Session summary. */
@@ -2263,9 +2616,9 @@ window.__ModuleLoader__.load({
       const value = typeof updatedAt === 'string' ? Date.parse(updatedAt) : Number(updatedAt);
       if (!Number.isFinite(value)) return '';
       const delta = Date.now() - value;
-      if (delta < 60_000) return '刚刚';
-      if (delta < 3_600_000) return `${Math.floor(delta / 60_000)} 分钟前`;
-      if (delta < 86_400_000) return `${Math.floor(delta / 3_600_000)} 小时前`;
+      if (delta < 60_000) return tr('common.justNow');
+      if (delta < 3_600_000) return tr('common.minutesAgo', { count: Math.floor(delta / 60_000) });
+      if (delta < 86_400_000) return tr('common.hoursAgo', { count: Math.floor(delta / 3_600_000) });
       return new Date(value).toLocaleDateString();
     }
 
@@ -2531,7 +2884,7 @@ window.__ModuleLoader__.load({
 
       const host = document.createElement('div');
       host.className = 'dsh-ol-sb';
-      host.setAttribute('aria-label', 'Overleaf 项目');
+      host.setAttribute('aria-label', tr('sidebar.projectAria'));
       const layout = createOverleafLayout(ctx);
       // The native Files tree can be mounted before the selected-session
       // service reports the Overleaf session. Keep decorating the active tree
@@ -2592,7 +2945,7 @@ window.__ModuleLoader__.load({
         const time = typeof value === 'string' ? Date.parse(value) : Number(value);
         if (!Number.isFinite(time)) return '';
         const minutes = Math.max(0, Math.floor((Date.now() - time) / 60000));
-        if (minutes < 1) return '刚刚';
+        if (minutes < 1) return tr('common.justNow');
         if (minutes < 60) return `${minutes}m`;
         if (minutes < 1440) return `${Math.floor(minutes / 60)}h`;
         return `${Math.floor(minutes / 1440)}d`;
@@ -2606,7 +2959,7 @@ window.__ModuleLoader__.load({
       function closeMenu() { (ctx.get?.('contextMenus') ?? ctx.contextMenus)?.close(); }
       function openSessionMenu(session, trigger, point) {
         const service = ctx.get?.('contextMenus') ?? ctx.contextMenus;
-        if (service === undefined) { setFlash('error', 'Harness 会话菜单服务尚未就绪。'); return; }
+        if (service === undefined) { setFlash('error', tr('sidebar.sessionMenuUnavailable')); return; }
         const active = service.active.getSnapshot();
         if (active?.kind === 'session' && active.value.sessionId === session.id) { service.close(); return; }
         trigger.focus({ preventScroll: true });
@@ -2617,7 +2970,7 @@ window.__ModuleLoader__.load({
       function openMenu(workspace, trigger, point) {
         const service = ctx.get?.('contextMenus') ?? ctx.contextMenus;
         const item = workspaceItemOf(ctx, workspace.localDir);
-        if (service === undefined || item === undefined) { setFlash('error', 'Harness 工作区菜单尚未就绪。'); return; }
+        if (service === undefined || item === undefined) { setFlash('error', tr('sidebar.workspaceMenuUnavailable')); return; }
         const active = service.active.getSnapshot();
         if (active?.kind === 'workspace' && active.value.workspaceId === item.workspaceId) { service.close(); return; }
         trigger.focus({ preventScroll: true });
@@ -2643,18 +2996,18 @@ window.__ModuleLoader__.load({
           if (workspace === undefined) return [];
           const running = ['connected', 'connecting', 'reconnecting'].includes(workspace.phase);
           const children = [
-            { id: 'connect', label: running ? '断开同步' : '重新连接', icon: { key: 'overleaf.link' }, run: () => toggleSync(workspace) },
-            { id: 'new', label: '新建会话', icon: { key: 'overleaf.new' }, run: () => startNewSession(workspace) },
+            { id: 'connect', label: running ? tr('menu.disconnectSync') : tr('menu.reconnect'), icon: { key: 'overleaf.link' }, run: () => toggleSync(workspace) },
+            { id: 'new', label: tr('menu.newSession'), icon: { key: 'overleaf.new' }, run: () => startNewSession(workspace) },
           ];
           if (workspace.phase === 'connected') {
-            children.push({ id: 'pause', label: workspace.paused ? '恢复自动推送' : '暂停自动推送', icon: { key: 'overleaf.pause' },
+            children.push({ id: 'pause', label: workspace.paused ? tr('menu.resumePush') : tr('menu.pausePush'), icon: { key: 'overleaf.pause' },
               run: () => runAction(workspace, 'pause', () => api('live', { local_path: workspace.localDir, action: workspace.paused ? 'resume' : 'pause' })) },
-              { id: 'flush', label: '立即同步本地改动', icon: { key: 'overleaf.refresh' },
+              { id: 'flush', label: tr('menu.flush'), icon: { key: 'overleaf.refresh' },
                 run: () => runAction(workspace, 'flush', () => api('live', { local_path: workspace.localDir, action: 'flush' })) });
           }
-          children.push({ id: 'web', label: '在 Overleaf 中打开', icon: { key: 'overleaf.link' },
+          children.push({ id: 'web', label: tr('menu.openInOverleaf'), icon: { key: 'overleaf.link' },
             run: () => { window.open(`${workspace.server}/project/${encodeURIComponent(workspace.projectId)}`, '_blank', 'noopener,noreferrer'); } },
-            { id: 'manage', label: '管理工作区与账号', icon: { key: 'workspace.rename' }, run: () => ctx.layout.selectPanel(PANEL) });
+            { id: 'manage', label: tr('menu.manage'), icon: { key: 'workspace.rename' }, run: () => ctx.layout.selectPanel(PANEL) });
           return children;
         },
       });
@@ -2664,13 +3017,13 @@ window.__ModuleLoader__.load({
         const dialog = el('dialog', 'dsh-ol-sb-confirm');
         removalDialog = dialog;
         dialog.setAttribute('aria-labelledby', 'overleaf-remove-session-title');
-        const heading = el('h2', '', '删除会话？'); heading.id = 'overleaf-remove-session-title';
+        const heading = el('h2', '', tr('dialog.deleteSession')); heading.id = 'overleaf-remove-session-title';
         const name = el('p', 'dsh-ol-sb-confirm-name', sessionLabel(session));
-        const description = el('p', '', '会话将归档并从 Overleaf 列表移除。Harness 历史日志和论文文件都会保留。');
+        const description = el('p', '', tr('dialog.deleteSessionDescription'));
         const error = el('p', 'dsh-ol-error'); error.setAttribute('role', 'alert'); error.hidden = true;
         const actions = el('div', 'dsh-ol-sb-confirm-actions');
-        const cancel = el('button', '', '取消'); cancel.type = 'button'; cancel.autofocus = true;
-        const confirm = el('button', 'danger', '删除会话'); confirm.type = 'button';
+        const cancel = el('button', '', tr('common.cancel')); cancel.type = 'button'; cancel.autofocus = true;
+        const confirm = el('button', 'danger', tr('dialog.deleteSessionConfirm')); confirm.type = 'button';
         let working = false;
         const close = () => { if (!working) { dialog.close(); dialog.remove(); removalDialog = undefined; } };
         cancel.addEventListener('click', close);
@@ -2678,8 +3031,8 @@ window.__ModuleLoader__.load({
         confirm.addEventListener('click', async () => {
           if (working) return;
           const latest = sessionService(ctx)?.list?.getSnapshot?.().byId?.[session.id];
-          if (latest?.running) { error.hidden = false; error.textContent = '请先停止此会话，再删除。'; return; }
-          working = true; cancel.disabled = true; confirm.disabled = true; confirm.textContent = '删除中…'; error.hidden = true;
+          if (latest?.running) { error.hidden = false; error.textContent = tr('dialog.stopSessionFirst'); return; }
+          working = true; cancel.disabled = true; confirm.disabled = true; confirm.textContent = tr('common.deleting'); error.hidden = true;
           let archived = false;
           try {
             await ctx.uiWorkspace.archiveSession(session.id); archived = true;
@@ -2688,9 +3041,9 @@ window.__ModuleLoader__.load({
             working = false; close(); render();
           } catch (reason) {
             error.hidden = false;
-            error.textContent = `${archived ? '会话已归档，但移除未完成：' : ''}${errorText(reason)}`;
+            error.textContent = `${archived ? tr('dialog.sessionArchivedRemovalFailed') : ''}${errorText(reason)}`;
           } finally {
-            working = false; cancel.disabled = false; confirm.disabled = false; confirm.textContent = '删除会话';
+            working = false; cancel.disabled = false; confirm.disabled = false; confirm.textContent = tr('dialog.deleteSessionConfirm');
           }
         });
         actions.append(cancel, confirm); dialog.append(heading, name, description, error, actions);
@@ -2704,13 +3057,13 @@ window.__ModuleLoader__.load({
           if (workspace === undefined || removedWorkspaceSessions.get(workspace.localDir)?.has(sessionId)) return [];
           const session = sessionService(ctx)?.list?.getSnapshot?.().byId?.[sessionId];
           if (session === undefined || session.blank) return [];
-          return [{ id: 'delete', label: '删除会话', danger: true, afterContent: true, separatorBefore: true,
+          return [{ id: 'delete', label: tr('menu.deleteSession'), danger: true, afterContent: true, separatorBefore: true,
             disabled: session.running === true, run: () => confirmSessionRemoval(workspace, session) }];
         },
       });
 
       const subtitle = (workspace) => {
-        if (workspace.phase === 'error') return workspace.error || '连接出错';
+        if (workspace.phase === 'error') return workspace.error || tr('sidebar.connectionError');
         return '';
       };
 
@@ -2810,7 +3163,7 @@ window.__ModuleLoader__.load({
         const run = api('live', { local_path: localDir, action: 'start' })
           .then((status) => {
             if ((status?.conflicts ?? 0) > 0) {
-              setFlash('error', `${status.conflicts} 个启动冲突已保留本地草稿，云端版本已载入。`);
+              setFlash('error', tr('sidebar.conflicts', { count: status.conflicts }));
             }
             return status;
           })
@@ -2855,7 +3208,7 @@ window.__ModuleLoader__.load({
 
       function startNewSession(workspace) {
         if (workspaceItemOf(ctx, workspace.localDir) === undefined) {
-          setFlash('error', '工作区尚未就绪，请稍后重试。');
+          setFlash('error', tr('errors.workspaceNotReadyLater'));
           return Promise.resolve();
         }
         return runAction(workspace, 'new', async () => {
@@ -2907,7 +3260,7 @@ window.__ModuleLoader__.load({
         const head = el('div', 'dsh-ol-sb-head');
         const sectionToggle = el('button', 'dsh-ol-sb-section-toggle');
         sectionToggle.type = 'button'; sectionToggle.setAttribute('aria-expanded', String(!collapsed));
-        sectionToggle.setAttribute('aria-label', collapsed ? '展开 Overleaf' : '折叠 Overleaf');
+        sectionToggle.setAttribute('aria-label', collapsed ? tr('sidebar.expand') : tr('sidebar.collapse'));
         sectionToggle.append(icon('chevron-right-outline-regular'), el('span', '', 'Overleaf'));
         sectionToggle.addEventListener('click', () => {
           closeMenu(); collapsed = !collapsed;
@@ -2915,24 +3268,24 @@ window.__ModuleLoader__.load({
           render();
         });
         head.append(sectionToggle,
-          iconButton('settings-outline-regular', '管理 Overleaf 工作区与账号', () => ctx.layout.selectPanel(PANEL)),
-          iconButton('project-add-outline-regular', '从已有项目创建本地工作区', () => ctx.layout.selectPanel(PANEL)));
+          iconButton('settings-outline-regular', tr('sidebar.manage'), () => ctx.layout.selectPanel(PANEL)),
+          iconButton('project-add-outline-regular', tr('sidebar.createFromProject'), () => ctx.layout.selectPanel(PANEL)));
 
         const body = el('div', 'dsh-ol-sb-body');
-        body.setAttribute('role', 'tree'); body.setAttribute('aria-label', 'Overleaf 工作区与会话');
+        body.setAttribute('role', 'tree'); body.setAttribute('aria-label', tr('sidebar.treeAria'));
         if (collapsed) body.style.display = 'none';
 
         const visibleWorkspaces = snapshot.workspaces.filter((record) => workspaceItemOf(ctx, record.localDir) !== undefined);
         if (visibleWorkspaces.length === 0) {
-          const empty = el('div', 'dsh-ol-sb-empty', '还没有 Overleaf 项目。');
-          const link = el('button', '', '在面板中登录并打开项目');
+          const empty = el('div', 'dsh-ol-sb-empty', tr('sidebar.empty'));
+          const link = el('button', '', tr('sidebar.loginAndOpen'));
           link.type = 'button';
           link.addEventListener('click', (event) => { event.stopPropagation(); ctx.layout.selectPanel(PANEL); });
           empty.append(link);
           body.append(empty);
         }
         if (setupError !== '') {
-          const failure = el('div', 'dsh-ol-sb-empty', setupError);
+          const failure = el('div', 'dsh-ol-sb-empty', setupErrorText());
           failure.style.color = '#c34c4c';
           body.append(failure);
         }
@@ -2951,14 +3304,17 @@ window.__ModuleLoader__.load({
           if (busy !== '') row.setAttribute('aria-disabled', 'true');
           const leading = el('button', 'dsh-ol-sb-leading');
           leading.type = 'button'; leading.setAttribute('aria-expanded', String(expanded));
-          leading.setAttribute('aria-label', `${expanded ? '折叠' : '展开'} ${workspace.projectName} 的会话`);
+          leading.setAttribute('aria-label', tr(expanded ? 'sidebar.collapseWorkspace' : 'sidebar.expandWorkspace',
+            { name: workspace.projectName }));
           leading.append(icon(expanded ? 'folder-open-regular' : 'folder-close-regular', 'dsh-ol-sb-folder'), icon('triangle-right-fill-regular', 'dsh-ol-sb-arrow'));
           leading.addEventListener('click', (event) => { event.stopPropagation(); closeMenu(); toggleProject(workspace); });
           const actions = el('span', 'dsh-ol-sb-actions');
-          const more = iconButton('ellipsis-outline-regular', `更多操作：${workspace.projectName}`, (event) => openMenu(workspace, event.currentTarget));
+          const more = iconButton('ellipsis-outline-regular', tr('sidebar.more', { name: workspace.projectName }),
+            (event) => openMenu(workspace, event.currentTarget));
           more.setAttribute('data-context-menu-trigger', '');
           more.setAttribute('aria-haspopup', 'menu'); more.setAttribute('aria-expanded', 'false');
-          const create = iconButton('new-chat-outline-regular', `新建会话：${workspace.projectName}`, () => { void startNewSession(workspace); });
+          const create = iconButton('new-chat-outline-regular', tr('sidebar.newSessionFor', { name: workspace.projectName }),
+            () => { void startNewSession(workspace); });
           for (const button of [more, create]) { button.disabled = busy !== '' || (button !== more && !workspace.bound); actions.append(button); }
           row.append(leading, el('span', 'dsh-ol-sb-title', workspace.projectName), actions);
           const enter = () => { closeMenu(); toggleProject(workspace); };
@@ -2992,7 +3348,7 @@ window.__ModuleLoader__.load({
             button.addEventListener('click', open);
             if (session.blank !== true) {
               const actions = el('span', 'dsh-ol-sb-session-actions');
-              const more = iconButton('ellipsis-outline-regular', `会话操作：${sessionLabel(session)}`, (event) => {
+              const more = iconButton('ellipsis-outline-regular', tr('sidebar.sessionActions', { name: sessionLabel(session) }), (event) => {
                 openSessionMenu(session, event.currentTarget);
               });
               more.setAttribute('data-context-menu-trigger', '');
@@ -3060,6 +3416,12 @@ window.__ModuleLoader__.load({
       });
       observer.observe(document.body, { childList: true, subtree: true });
       const unsubscribe = ctx.workspaces.list.subscribe(() => { void refresh(); });
+      const unsubscribeLocale = (ctx.get?.('locale') ?? ctx.locale)?.subscribe?.(() => {
+        if (disposed) return;
+        closeMenu();
+        decorateFileTreeRows();
+        render();
+      });
       const unsubscribeSessions = sessionService(ctx)?.list?.subscribe?.(() => schedule());
       const unsubscribeSessionMenu = (ctx.get?.('contextMenus') ?? ctx.contextMenus)?.active?.subscribe?.(() => {
         const active = (ctx.get?.('contextMenus') ?? ctx.contextMenus)?.active?.getSnapshot?.();
@@ -3151,6 +3513,7 @@ window.__ModuleLoader__.load({
           disposed = true;
           observer.disconnect();
           unsubscribe?.();
+          unsubscribeLocale?.();
           unsubscribeSessions?.();
           unsubscribeSessionMenu?.();
           document.documentElement.classList.remove('dsh-overleaf-flat-workspace-menu');
@@ -3183,8 +3546,22 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['slots', 'layout', 'connection', 'workspaces', 'uiWorkspace'],
+      inject: ['slots', 'layout', 'connection', 'workspaces', 'uiWorkspace', 'locale'],
       apply(ctx) {
+        const locale = ctx.get?.('locale') ?? ctx.locale;
+        if (locale !== undefined) {
+          localeRuntime = locale;
+        }
+        if (locale?.register !== undefined) {
+          ctx.effect(() => {
+            const disposeEn = locale.register(LOCALE_NS, 'en', UI_COPY.en);
+            const disposeZh = locale.register(LOCALE_NS, 'zh', UI_COPY.zh);
+            return () => {
+              disposeZh?.();
+              disposeEn?.();
+            };
+          }, 'dsh-overleaf: locale dictionaries');
+        }
         const api = makeApi(ctx);
         const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
         const waitFor = async (predicate, timeout = 600, step = 20) => {
@@ -3387,7 +3764,7 @@ window.__ModuleLoader__.load({
             // during the React commit. Reassert the Overleaf track before any
             // new-session pane work can cause another outer-frame solve.
             sidebarSection?.holdRightbarTrack?.();
-            if (sessionId === undefined) throw new Error('工作区还没有可用的会话。');
+            if (sessionId === undefined) throw new Error(tr('errors.workspaceNoSession'));
             rememberSession(sessionId, localDir);
             void sidebarSection?.refresh();
 
@@ -3553,7 +3930,7 @@ window.__ModuleLoader__.load({
             const opened = await api('open', { base_url: record.server, project_id: record.projectId,
               project_name: record.projectName, local_path: record.localDir });
             const workspaceId = opened.workspaceId ?? workspaceIdFor(record.localDir);
-            if (workspaceId === undefined) throw new Error('工作区尚未就绪，请稍后重试。');
+            if (workspaceId === undefined) throw new Error(tr('errors.workspaceNotReadyLater'));
             await enterWorkspace(workspaceId, record.localDir, options);
           } finally {
             restore();
@@ -3665,7 +4042,10 @@ window.__ModuleLoader__.load({
             contextMenu = document.createElement('div');
             contextMenu.className = 'dsh-ol-tree-menu';
             contextMenu.setAttribute('role', 'menu');
-            for (const [kind, label, folder] of [['file', '在此处新建文件', false], ['folder', '在此处新建文件夹', true]]) {
+            for (const [kind, label, folder] of [
+              ['file', tr('files.createHereFile'), false],
+              ['folder', tr('files.createHereFolder'), true],
+            ]) {
               const button = document.createElement('button');
               button.type = 'button';
               button.dataset.dshCreateKind = kind;
@@ -3893,7 +4273,7 @@ window.__ModuleLoader__.load({
                 },
               },
               inject: () => ({ api, readPdf: pdfReader(ctx) }),
-            }, SourceTab)), 'dsh-overleaf: source tab body');
+            }, localizeComponent(SourceTab))), 'dsh-overleaf: source tab body');
             // The document slot is owned by the host. Reuse its PDF registration
             // in our own slot instead of redeclaring that global child slot.
             ctx.effect(() => {
@@ -3916,14 +4296,14 @@ window.__ModuleLoader__.load({
               return () => { unsubscribe(); dispose?.(); };
             }, 'dsh-overleaf: embedded PDF renderer');
           } catch (error) {
-            noteSetupError('右侧栏标签页注册失败', error);
+            noteSetupError('setup.sourceTab', error);
           }
         };
         if (typeof ctx.inject === 'function') {
           try { ctx.inject(['sidebarRightTabs'], registerSourceTab); }
-          catch (error) { noteSetupError('右侧栏服务不可用', error); }
+          catch (error) { noteSetupError('setup.sidebarUnavailable', error); }
         } else {
-          noteSetupError('右侧栏服务不可用', new Error('客户端上下文缺少 inject()'));
+          noteSetupError('setup.sidebarUnavailable', new Error(tr('setup.missingInject')));
         }
 
         try {
@@ -3932,13 +4312,13 @@ window.__ModuleLoader__.load({
             id: 'dsh-overleaf/files-actions',
             order: -10,
             inject: () => ({ api, openInEditor }),
-          }, FilesActions));
+          }, localizeComponent(FilesActions)));
         } catch (error) {
           console.warn('[dsh-overleaf-workshop] files actions slot unavailable:', error);
         }
 
         ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: PANEL,
-          inject: () => ({ services: { ctx, api, enterWorkspace, openRecord } }) }, OverleafPanel));
+          inject: () => ({ services: { ctx, api, enterWorkspace, openRecord } }) }, localizeComponent(OverleafPanel)));
         ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({ name: 'sidebar.panellist',
           id: PANEL, order: -9, label: 'Overleaf' }, Icon));
       },
